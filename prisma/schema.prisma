@@ -1,0 +1,469 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REJECTED
+}
+
+enum VehicleType {
+  CAR_SEDAN
+  CAR_SUV
+  CAR_HATCHBACK
+  CAR_LUXURY
+  TEMPO_TRAVELLER
+  MINI_BUS
+  BUS
+  OTHER
+}
+
+enum TripType {
+  ONE_WAY
+  ROUND_TRIP
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  CARD
+  OTHER
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  PROCESSED
+  REJECTED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  PARTIALLY_PAID
+  CANCELLED
+  VOID
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMATION
+  BOOKING_APPROVED
+  BOOKING_REJECTED
+  BOOKING_CANCELLED
+  STATUS_UPDATE
+  PAYMENT_REMINDER
+  PAYMENT_RECEIVED
+  INVOICE_SENT
+  REFUND_PROCESSED
+  GENERAL
+}
+
+enum ActivityAction {
+  BOOKING_CREATED
+  BOOKING_UPDATED
+  BOOKING_STATUS_CHANGED
+  BOOKING_PRICING_SET
+  BOOKING_NOTE_ADDED
+  CUSTOMER_CREATED
+  CUSTOMER_UPDATED
+  INVOICE_CREATED
+  INVOICE_UPDATED
+  INVOICE_CANCELLED
+  PAYMENT_RECORDED
+  PAYMENT_UPDATED
+  REFUND_REQUESTED
+  REFUND_PROCESSED
+  REMINDER_SENT
+  SETTINGS_UPDATED
+  USER_LOGIN
+  USER_LOGOUT
+  EXPORT_GENERATED
+}
+
+// ============================================================
+// MODELS
+// ============================================================
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         UserRole  @default(ADMIN)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  activityLogs ActivityLog[]
+  bookingNotes BookingNote[]
+
+  @@map("users")
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  name           String
+  phone          String   @unique
+  email          String?
+  alternatePhone String?
+  address        String?
+  city           String?
+  state          String?
+  pincode        String?
+  gstin          String?
+  companyName    String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  bookings Booking[]
+  invoices Invoice[]
+  payments Payment[]
+
+  @@index([name])
+  @@index([email])
+  @@map("customers")
+}
+
+model Booking {
+  id                String        @id @default(cuid())
+  bookingId         String        @unique
+  status            BookingStatus @default(PENDING)
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  tripType          TripType
+  vehicleType       VehicleType
+  vehiclePreference String?
+  passengerCount    Int
+  travelDate        DateTime
+  returnDate        DateTime?
+  pickupLocation    String
+  pickupAddress     String?
+  dropLocation      String
+  dropAddress       String?
+  pickupTime        String?
+  estimatedDistance  Float?
+  specialRequests   String?
+  passengerDetails  Json?
+
+  baseFare         Decimal? @db.Decimal(12, 2)
+  taxAmount        Decimal? @db.Decimal(12, 2)
+  tollCharges      Decimal? @db.Decimal(12, 2)
+  driverAllowance  Decimal? @db.Decimal(12, 2)
+  extraCharges     Decimal? @db.Decimal(12, 2)
+  extraChargesNote String?
+  discount         Decimal? @db.Decimal(12, 2)
+  totalAmount      Decimal? @db.Decimal(12, 2)
+
+  advanceAmount  Decimal?      @db.Decimal(12, 2)
+  advancePaidAt  DateTime?
+  paymentStatus  PaymentStatus @default(PENDING)
+  paymentDueDate DateTime?
+
+  adminRemarks       String?
+  rejectionReason    String?
+  cancellationReason String?
+  cancelledAt        DateTime?
+  approvedAt         DateTime?
+  confirmedAt        DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices      Invoice[]
+  payments      Payment[]
+  refunds       Refund[]
+  notifications NotificationLog[]
+  notes         BookingNote[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([travelDate])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  @@map("bookings")
+}
+
+model BookingNote {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
+  @@map("booking_notes")
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  status        InvoiceStatus @default(DRAFT)
+
+  bookingId  String
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  invoiceDate DateTime @default(now())
+  dueDate     DateTime?
+
+  companyName      String
+  companyAddress   String
+  companyGstin     String
+  companyPhone     String
+  companyEmail     String
+  companyState     String
+  companyStateCode String
+
+  customerName      String
+  customerAddress   String?
+  customerPhone     String
+  customerEmail     String?
+  customerGstin     String?
+  customerState     String?
+  customerStateCode String?
+
+  serviceDescription String
+  sacCode            String  @default("9964")
+  hsnSacDescription  String?
+
+  subtotal        Decimal @db.Decimal(12, 2)
+  cgstRate        Decimal @db.Decimal(5, 2) @default(2.5)
+  sgstRate        Decimal @db.Decimal(5, 2) @default(2.5)
+  igstRate        Decimal @db.Decimal(5, 2) @default(0)
+  cgstAmount      Decimal @db.Decimal(12, 2) @default(0)
+  sgstAmount      Decimal @db.Decimal(12, 2) @default(0)
+  igstAmount      Decimal @db.Decimal(12, 2) @default(0)
+  totalTax        Decimal @db.Decimal(12, 2)
+  tollCharges     Decimal @db.Decimal(12, 2) @default(0)
+  driverAllowance Decimal @db.Decimal(12, 2) @default(0)
+  extraCharges    Decimal @db.Decimal(12, 2) @default(0)
+  discount        Decimal @db.Decimal(12, 2) @default(0)
+  grandTotal      Decimal @db.Decimal(12, 2)
+  amountInWords   String?
+  amountPaid      Decimal @db.Decimal(12, 2) @default(0)
+  balanceDue      Decimal @db.Decimal(12, 2)
+
+  placeOfSupply   String?
+  isInterState    Boolean @default(false)
+  isReverseCharge Boolean @default(false)
+
+  termsAndConditions String?
+  notes              String?
+  pdfUrl             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([invoiceDate])
+  @@index([status])
+  @@map("invoices")
+}
+
+model Payment {
+  id            String @id @default(cuid())
+  receiptNumber String @unique
+
+  bookingId  String
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  invoiceId  String?
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
+
+  amount         Decimal       @db.Decimal(12, 2)
+  method         PaymentMethod
+  isAdvance      Boolean       @default(false)
+  transactionRef String?
+  paymentDate    DateTime      @default(now())
+  notes          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([paymentDate])
+  @@map("payments")
+}
+
+model Refund {
+  id           String @id @default(cuid())
+  refundNumber String @unique
+
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id])
+
+  status           RefundStatus   @default(REQUESTED)
+  requestedAmount  Decimal        @db.Decimal(12, 2)
+  approvedAmount   Decimal?       @db.Decimal(12, 2)
+  cancellationFee  Decimal?       @db.Decimal(12, 2) @default(0)
+  refundedAmount   Decimal?       @db.Decimal(12, 2)
+  reason           String
+  adminRemarks     String?
+  refundMethod     PaymentMethod?
+  transactionRef   String?
+  requestedAt      DateTime       @default(now())
+  processedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([status])
+  @@map("refunds")
+}
+
+model NotificationLog {
+  id      String              @id @default(cuid())
+  channel NotificationChannel
+  type    NotificationType
+  status  NotificationStatus  @default(QUEUED)
+
+  recipientPhone String?
+  recipientEmail String?
+
+  subject    String?
+  body       String
+  templateId String?
+
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+
+  providerMessageId String?
+  errorMessage      String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
+  @@index([channel])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notification_logs")
+}
+
+model ActivityLog {
+  id          String         @id @default(cuid())
+  action      ActivityAction
+  description String
+  metadata    Json?
+
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id])
+  ipAddress String?
+
+  entityType String?
+  entityId   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model Settings {
+  id               String  @id @default("app_settings")
+  companyName      String  @default("Sarthak Tour and Travels")
+  companyLegalName String?
+  companyAddress   String?
+  companyCity      String?
+  companyState     String?
+  companyStateCode String?
+  companyPincode   String?
+  companyPhone     String?
+  companyEmail     String?
+  companyWebsite   String?
+  companyGstin     String?
+  companyPan       String?
+  companyCin       String?
+  companyLogoUrl   String?
+
+  gstRate        Decimal @db.Decimal(5, 2) @default(5.0)
+  defaultSacCode String  @default("9964")
+  isInterState   Boolean @default(false)
+
+  bankName          String?
+  bankBranch        String?
+  bankAccountNumber String?
+  bankIfscCode      String?
+  bankAccountName   String?
+  upiId             String?
+
+  smsEnabled      Boolean @default(true)
+  emailEnabled    Boolean @default(true)
+  whatsappEnabled Boolean @default(true)
+
+  invoicePrefix String  @default("INV")
+  invoiceTerms  String? @default("Payment is due within 7 days of invoice date.")
+  invoiceNotes  String?
+
+  bookingPrefix         String  @default("TA")
+  autoApprove           Boolean @default(false)
+  defaultPaymentDueDays Int     @default(7)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

@@ -1,0 +1,9 @@
+{
+  "name": "Sarthak Tour and Travels",
+  "short_name": "Sarthak Travels",
+  "description": "Book car and bus travel in Mumbai",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316"
+}

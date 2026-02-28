@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add button input card dialog table select badge toast dropdown-menu calendar form sheet tabs textarea skeleton separator label popover command avatar checkbox radio-group switch tooltip --yes)",
+      "Bash(xargs sed:*)",
+      "Bash(npx next build)",
+      "Bash(npm ls:*)"
+    ]
+  }
+}
