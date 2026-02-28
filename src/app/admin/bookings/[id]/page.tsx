@@ -31,7 +31,9 @@ import {
   MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
-import { BookingStatus } from "@prisma/client";
+import type { BOOKING_STATUSES } from "@/lib/constants";
+
+type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
 interface BookingDetail {
   id: string;

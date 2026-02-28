@@ -1,5 +1,3 @@
-import { BookingStatus } from "@prisma/client";
-
 export const GST_RATE = 5.0;
 export const CGST_RATE = 2.5;
 export const SGST_RATE = 2.5;
@@ -12,14 +10,27 @@ export const INVOICE_PREFIX = "INV";
 export const RECEIPT_PREFIX = "RCT";
 export const REFUND_PREFIX = "REF";
 
-export const ALLOWED_STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
-  [BookingStatus.PENDING]: [BookingStatus.APPROVED, BookingStatus.REJECTED],
-  [BookingStatus.APPROVED]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
-  [BookingStatus.CONFIRMED]: [BookingStatus.IN_PROGRESS, BookingStatus.CANCELLED],
-  [BookingStatus.IN_PROGRESS]: [BookingStatus.COMPLETED, BookingStatus.CANCELLED],
-  [BookingStatus.COMPLETED]: [],
-  [BookingStatus.CANCELLED]: [],
-  [BookingStatus.REJECTED]: [],
+// Plain enum value arrays — safe for client components (no @prisma/client import)
+export const BOOKING_STATUSES = [
+  "PENDING", "APPROVED", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "REJECTED",
+] as const;
+export const VEHICLE_TYPES = [
+  "CAR_SEDAN", "CAR_SUV", "CAR_HATCHBACK", "CAR_LUXURY", "TEMPO_TRAVELLER", "MINI_BUS", "BUS", "OTHER",
+] as const;
+export const TRIP_TYPES = ["ONE_WAY", "ROUND_TRIP"] as const;
+export const PAYMENT_METHODS = ["CASH", "UPI", "BANK_TRANSFER", "CHEQUE", "CARD", "OTHER"] as const;
+export const REFUND_STATUSES = ["REQUESTED", "APPROVED", "PROCESSED", "REJECTED"] as const;
+
+type BookingStatusValue = (typeof BOOKING_STATUSES)[number];
+
+export const ALLOWED_STATUS_TRANSITIONS: Record<BookingStatusValue, BookingStatusValue[]> = {
+  PENDING: ["APPROVED", "REJECTED"],
+  APPROVED: ["CONFIRMED", "CANCELLED"],
+  CONFIRMED: ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+  COMPLETED: [],
+  CANCELLED: [],
+  REJECTED: [],
 };
 
 export const VEHICLE_TYPE_LABELS: Record<string, string> = {

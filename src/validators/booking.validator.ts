@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BookingStatus, VehicleType, TripType } from "@prisma/client";
+import { BOOKING_STATUSES, VEHICLE_TYPES, TRIP_TYPES } from "@/lib/constants";
 
 export const createBookingSchema = z
   .object({
@@ -10,8 +10,8 @@ export const createBookingSchema = z
       .max(13)
       .regex(/^(\+91)?[6-9]\d{9}$/, "Must be a valid Indian mobile number"),
     email: z.string().email().optional().or(z.literal("")),
-    tripType: z.nativeEnum(TripType, { message: "Please select a trip type" }),
-    vehicleType: z.nativeEnum(VehicleType, { message: "Please select a vehicle type" }),
+    tripType: z.enum(TRIP_TYPES, { message: "Please select a trip type" }),
+    vehicleType: z.enum(VEHICLE_TYPES, { message: "Please select a vehicle type" }),
     vehiclePreference: z.string().max(200).optional(),
     passengerCount: z
       .number({ message: "Passenger count is required" })
@@ -76,7 +76,7 @@ export const assignPricingSchema = z.object({
 });
 
 export const updateBookingStatusSchema = z.object({
-  status: z.nativeEnum(BookingStatus, { message: "Invalid status" }),
+  status: z.enum(BOOKING_STATUSES, { message: "Invalid status" }),
   reason: z.string().max(1000).optional(),
 });
 
