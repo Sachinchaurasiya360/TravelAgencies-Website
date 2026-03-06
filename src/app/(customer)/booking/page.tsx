@@ -7,26 +7,13 @@ import { toast } from "sonner";
 import { createBookingSchema, type CreateBookingInput } from "@/validators/booking.validator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   CheckCircle2,
   Copy,
-  Car,
-  Bus,
-  Users,
   ArrowRight,
 } from "lucide-react";
-import { VEHICLE_TYPE_LABELS } from "@/lib/constants";
 
 export default function BookingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,19 +25,11 @@ export default function BookingPage() {
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors },
   } = useForm<CreateBookingInput>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(createBookingSchema as any) as any,
-    defaultValues: {
-      tripType: "ONE_WAY",
-      passengerCount: 1,
-    },
   });
-
-  const tripType = watch("tripType");
 
   async function onSubmit(data: CreateBookingInput) {
     setIsSubmitting(true);
@@ -139,189 +118,6 @@ export default function BookingPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        {/* Trip Type */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Trip Type</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RadioGroup
-              defaultValue="ONE_WAY"
-              onValueChange={(val) => setValue("tripType", val as "ONE_WAY" | "ROUND_TRIP")}
-              className="flex gap-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="ONE_WAY" id="one-way" />
-                <Label htmlFor="one-way">One Way</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="ROUND_TRIP" id="round-trip" />
-                <Label htmlFor="round-trip">Round Trip</Label>
-              </div>
-            </RadioGroup>
-            {errors.tripType && (
-              <p className="mt-1 text-sm text-red-500">{errors.tripType.message}</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Vehicle Type */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Vehicle Type</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              {Object.entries(VEHICLE_TYPE_LABELS).map(([value, label]) => {
-                const Icon = value.startsWith("CAR") ? Car : value === "BUS" ? Bus : Users;
-                return (
-                  <label
-                    key={value}
-                    className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 p-4 transition-colors hover:border-orange-300 ${
-                      watch("vehicleType") === value
-                        ? "border-orange-500 bg-orange-50"
-                        : "border-muted"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      value={value}
-                      className="sr-only"
-                      {...register("vehicleType")}
-                    />
-                    <Icon className="h-6 w-6 text-orange-500" />
-                    <span className="text-center text-xs font-medium">{label}</span>
-                  </label>
-                );
-              })}
-            </div>
-            {errors.vehicleType && (
-              <p className="mt-2 text-sm text-red-500">{errors.vehicleType.message}</p>
-            )}
-
-            <div className="mt-4">
-              <Label htmlFor="vehiclePreference">Vehicle Preference (optional)</Label>
-              <Input
-                id="vehiclePreference"
-                placeholder="e.g., Innova Crysta, Ertiga, etc."
-                className="mt-1"
-                {...register("vehiclePreference")}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Travel Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Travel Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="travelDate">Travel Date *</Label>
-                <Input
-                  id="travelDate"
-                  type="date"
-                  className="mt-1"
-                  {...register("travelDate")}
-                />
-                {errors.travelDate && (
-                  <p className="mt-1 text-sm text-red-500">{errors.travelDate.message}</p>
-                )}
-              </div>
-              {tripType === "ROUND_TRIP" && (
-                <div>
-                  <Label htmlFor="returnDate">Return Date *</Label>
-                  <Input
-                    id="returnDate"
-                    type="date"
-                    className="mt-1"
-                    {...register("returnDate")}
-                  />
-                  {errors.returnDate && (
-                    <p className="mt-1 text-sm text-red-500">{errors.returnDate.message}</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="pickupLocation">Pickup Location *</Label>
-                <Input
-                  id="pickupLocation"
-                  placeholder="e.g., Mumbai Airport"
-                  className="mt-1"
-                  {...register("pickupLocation")}
-                />
-                {errors.pickupLocation && (
-                  <p className="mt-1 text-sm text-red-500">{errors.pickupLocation.message}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="dropLocation">Drop Location *</Label>
-                <Input
-                  id="dropLocation"
-                  placeholder="e.g., Pune Station"
-                  className="mt-1"
-                  {...register("dropLocation")}
-                />
-                {errors.dropLocation && (
-                  <p className="mt-1 text-sm text-red-500">{errors.dropLocation.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="pickupAddress">Pickup Address (optional)</Label>
-                <Input
-                  id="pickupAddress"
-                  placeholder="Full address for pickup"
-                  className="mt-1"
-                  {...register("pickupAddress")}
-                />
-              </div>
-              <div>
-                <Label htmlFor="dropAddress">Drop Address (optional)</Label>
-                <Input
-                  id="dropAddress"
-                  placeholder="Full address for drop"
-                  className="mt-1"
-                  {...register("dropAddress")}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="pickupTime">Preferred Pickup Time</Label>
-                <Input
-                  id="pickupTime"
-                  type="time"
-                  className="mt-1"
-                  {...register("pickupTime")}
-                />
-              </div>
-              <div>
-                <Label htmlFor="passengerCount">Number of Passengers *</Label>
-                <Input
-                  id="passengerCount"
-                  type="number"
-                  min={1}
-                  max={60}
-                  className="mt-1"
-                  {...register("passengerCount", { valueAsNumber: true })}
-                />
-                {errors.passengerCount && (
-                  <p className="mt-1 text-sm text-red-500">{errors.passengerCount.message}</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Contact Details */}
         <Card>
           <CardHeader>
@@ -371,17 +167,61 @@ export default function BookingPage() {
           </CardContent>
         </Card>
 
-        {/* Special Requests */}
+        {/* Travel Details */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Special Requests (optional)</CardTitle>
+            <CardTitle className="text-lg">Travel Details</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="Any special requirements or requests..."
-              rows={3}
-              {...register("specialRequests")}
-            />
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="travelDate">Travel Date *</Label>
+              <Input
+                id="travelDate"
+                type="date"
+                className="mt-1"
+                {...register("travelDate")}
+              />
+              {errors.travelDate && (
+                <p className="mt-1 text-sm text-red-500">{errors.travelDate.message}</p>
+              )}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label htmlFor="pickupLocation">Pickup Location *</Label>
+                <Input
+                  id="pickupLocation"
+                  placeholder="e.g., Pune Airport"
+                  className="mt-1"
+                  {...register("pickupLocation")}
+                />
+                {errors.pickupLocation && (
+                  <p className="mt-1 text-sm text-red-500">{errors.pickupLocation.message}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="dropLocation">Drop Location *</Label>
+                <Input
+                  id="dropLocation"
+                  placeholder="e.g., Mumbai Station"
+                  className="mt-1"
+                  {...register("dropLocation")}
+                />
+                {errors.dropLocation && (
+                  <p className="mt-1 text-sm text-red-500">{errors.dropLocation.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="pickupTime">Preferred Pickup Time</Label>
+              <Input
+                id="pickupTime"
+                type="time"
+                className="mt-1"
+                {...register("pickupTime")}
+              />
+            </div>
           </CardContent>
         </Card>
 

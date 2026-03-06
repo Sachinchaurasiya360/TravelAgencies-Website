@@ -8,51 +8,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { VEHICLE_TYPE_LABELS, TRIP_TYPE_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/helpers/currency";
 import {
   Search,
   MapPin,
   Calendar,
-  Users,
-  Car,
   CheckCircle2,
   Clock,
   XCircle,
-  CircleDot,
 } from "lucide-react";
 
 interface BookingData {
   bookingId: string;
   status: string;
-  tripType: string;
-  vehicleType: string;
   travelDate: string;
-  returnDate: string | null;
   pickupLocation: string;
   dropLocation: string;
-  passengerCount: number;
   totalAmount: string | null;
   paymentStatus: string;
   createdAt: string;
-  approvedAt: string | null;
   confirmedAt: string | null;
-  startedAt: string | null;
-  completedAt: string | null;
   cancelledAt: string | null;
-  rejectionReason: string | null;
   cancellationReason: string | null;
 }
 
 const statusSteps = [
   { key: "PENDING", label: "Submitted", icon: Clock },
-  { key: "APPROVED", label: "Approved", icon: CheckCircle2 },
   { key: "CONFIRMED", label: "Confirmed", icon: CheckCircle2 },
-  { key: "IN_PROGRESS", label: "In Progress", icon: CircleDot },
-  { key: "COMPLETED", label: "Completed", icon: CheckCircle2 },
 ];
 
-const statusOrder = ["PENDING", "APPROVED", "CONFIRMED", "IN_PROGRESS", "COMPLETED"];
+const statusOrder = ["PENDING", "CONFIRMED"];
 
 export default function TrackPage() {
   return (
@@ -105,9 +90,7 @@ function TrackPageContent() {
 
   function getStepStatus(stepKey: string) {
     if (!booking) return "pending";
-    if (booking.status === "CANCELLED" || booking.status === "REJECTED") {
-      const idx = statusOrder.indexOf(stepKey);
-      const currentIdx = statusOrder.indexOf(booking.status === "CANCELLED" ? "PENDING" : "PENDING");
+    if (booking.status === "CANCELLED") {
       if (stepKey === "PENDING") return "completed";
       return "pending";
     }
@@ -135,7 +118,7 @@ function TrackPageContent() {
               <Label htmlFor="bookingId">Booking ID</Label>
               <Input
                 id="bookingId"
-                placeholder="e.g., TA-20260228-0001"
+                placeholder="e.g., 1"
                 value={bookingId}
                 onChange={(e) => setBookingId(e.target.value)}
                 className="mt-1"
@@ -171,16 +154,14 @@ function TrackPageContent() {
               </div>
             </CardHeader>
             <CardContent>
-              {booking.status === "CANCELLED" || booking.status === "REJECTED" ? (
+              {booking.status === "CANCELLED" ? (
                 <div className="flex items-center gap-3 rounded-lg bg-red-50 p-4">
                   <XCircle className="h-6 w-6 text-red-500" />
                   <div>
-                    <p className="font-medium text-red-700">
-                      Booking {booking.status === "CANCELLED" ? "Cancelled" : "Rejected"}
-                    </p>
-                    {(booking.cancellationReason || booking.rejectionReason) && (
+                    <p className="font-medium text-red-700">Booking Cancelled</p>
+                    {booking.cancellationReason && (
                       <p className="mt-1 text-sm text-red-600">
-                        Reason: {booking.cancellationReason || booking.rejectionReason}
+                        Reason: {booking.cancellationReason}
                       </p>
                     )}
                   </div>
@@ -228,28 +209,10 @@ function TrackPageContent() {
             <CardContent className="space-y-3">
               <div className="grid gap-3 text-sm sm:grid-cols-2">
                 <div className="flex items-center gap-2">
-                  <Car className="text-muted-foreground h-4 w-4" />
-                  <span className="text-muted-foreground">Vehicle:</span>
-                  <span className="font-medium">
-                    {VEHICLE_TYPE_LABELS[booking.vehicleType] || booking.vehicleType}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="text-muted-foreground h-4 w-4" />
-                  <span className="text-muted-foreground">Passengers:</span>
-                  <span className="font-medium">{booking.passengerCount}</span>
-                </div>
-                <div className="flex items-center gap-2">
                   <Calendar className="text-muted-foreground h-4 w-4" />
                   <span className="text-muted-foreground">Travel Date:</span>
                   <span className="font-medium">
                     {new Date(booking.travelDate).toLocaleDateString("en-IN")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">Trip Type:</span>
-                  <span className="font-medium">
-                    {TRIP_TYPE_LABELS[booking.tripType] || booking.tripType}
                   </span>
                 </div>
               </div>

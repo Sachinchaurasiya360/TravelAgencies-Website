@@ -45,10 +45,10 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold">Phone</h3>
                     <a
-                      href="tel:+917070416209"
+                      href="tel:+917498125466"
                       className="text-muted-foreground text-sm hover:text-orange-500"
                     >
-                      +91 70704 16209
+                      +91 74981 25466
                     </a>
                   </div>
                 </div>
@@ -60,12 +60,12 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold">WhatsApp</h3>
                     <a
-                      href="https://wa.me/917070416209"
+                      href="https://wa.me/917498125466"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-muted-foreground text-sm hover:text-orange-500"
                     >
-                      +91 70704 16209
+                      +91 74981 25466
                     </a>
                   </div>
                 </div>
@@ -77,10 +77,10 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold">Email</h3>
                     <a
-                      href="mailto:mrsachinchaurasiya@gmail.com"
+                      href="mailto:sarthaktourandtravelpune@gmail.com"
                       className="text-muted-foreground text-sm hover:text-orange-500"
                     >
-                      mrsachinchaurasiya@gmail.com
+                      sarthaktourandtravelpune@gmail.com
                     </a>
                   </div>
                 </div>
@@ -92,7 +92,7 @@ export default function ContactPage() {
                   <div>
                     <h3 className="font-semibold">Address</h3>
                     <p className="text-muted-foreground text-sm">
-                      Mumbai, Maharashtra, India
+                      Ravet, Pimpri Chinchwad, Pune, 411001
                     </p>
                   </div>
                 </div>

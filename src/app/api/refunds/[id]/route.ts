@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { RefundStatus, PaymentStatus, ActivityAction } from "@prisma/client";
+import { RefundStatus, ActivityAction } from "@prisma/client";
 import { processRefundSchema } from "@/validators/refund.validator";
 import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
 import { logActivity } from "@/services/activity-log.service";
@@ -97,12 +97,6 @@ export async function PATCH(
       updateData.refundMethod = data.refundMethod || null;
       updateData.transactionRef = data.transactionRef || null;
       updateData.processedAt = new Date();
-
-      // Update booking payment status to REFUNDED
-      await prisma.booking.update({
-        where: { id: refund.bookingId },
-        data: { paymentStatus: PaymentStatus.REFUNDED },
-      });
     }
 
     const updated = await prisma.refund.update({

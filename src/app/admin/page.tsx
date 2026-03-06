@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDate } from "@/lib/helpers/date";
-import { VEHICLE_TYPE_LABELS } from "@/lib/constants";
 import {
   CalendarCheck,
   Clock,
@@ -43,13 +42,13 @@ async function getDashboardData() {
       _sum: { totalAmount: true },
       where: {
         createdAt: { gte: startOfMonth },
-        status: { in: ["CONFIRMED", "IN_PROGRESS", "COMPLETED"] },
+        status: "CONFIRMED",
       },
     }),
     prisma.booking.count({
       where: {
         travelDate: { gte: today, lte: nextWeek },
-        status: { in: ["CONFIRMED", "IN_PROGRESS"] },
+        status: "CONFIRMED",
       },
     }),
     prisma.booking.findMany({
@@ -170,7 +169,6 @@ export default async function AdminDashboard() {
                   <tr className="text-muted-foreground border-b text-left">
                     <th className="pb-3 font-medium">Booking ID</th>
                     <th className="pb-3 font-medium">Customer</th>
-                    <th className="pb-3 font-medium">Vehicle</th>
                     <th className="pb-3 font-medium">Travel Date</th>
                     <th className="pb-3 font-medium">Status</th>
                     <th className="pb-3 font-medium">Amount</th>
@@ -194,10 +192,6 @@ export default async function AdminDashboard() {
                             {booking.customer.phone}
                           </p>
                         </div>
-                      </td>
-                      <td className="py-3">
-                        {VEHICLE_TYPE_LABELS[booking.vehicleType] ||
-                          booking.vehicleType}
                       </td>
                       <td className="py-3">
                         {formatDate(booking.travelDate)}

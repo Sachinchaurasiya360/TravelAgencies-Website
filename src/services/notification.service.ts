@@ -3,7 +3,7 @@ import { NotificationChannel, NotificationType, NotificationStatus } from "@pris
 import { sendEmail, bookingConfirmationEmail, statusUpdateEmail, paymentReminderEmail } from "./email.service";
 import { sendSms, bookingConfirmationSms, statusUpdateSms, paymentReminderSms } from "./sms.service";
 import { sendWhatsApp, bookingConfirmationWhatsApp, statusUpdateWhatsApp, paymentReminderWhatsApp } from "./whatsapp.service";
-import { VEHICLE_TYPE_LABELS, BOOKING_STATUS_LABELS } from "@/lib/constants";
+import { BOOKING_STATUS_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/helpers/currency";
 
 interface NotificationResult {
@@ -35,7 +35,6 @@ async function logNotification(params: {
 export async function sendBookingConfirmation(booking: {
   id: string;
   bookingId: string;
-  vehicleType: string;
   pickupLocation: string;
   dropLocation: string;
   travelDate: Date;
@@ -44,14 +43,12 @@ export async function sendBookingConfirmation(booking: {
   const results: NotificationResult[] = [];
   const settings = await prisma.settings.findUnique({ where: { id: "app_settings" } });
   const travelDateStr = booking.travelDate.toLocaleDateString("en-IN");
-  const vehicleLabel = VEHICLE_TYPE_LABELS[booking.vehicleType] || booking.vehicleType;
 
   // Email
   if (settings?.emailEnabled && booking.customer.email) {
     const emailData = bookingConfirmationEmail({
       customerName: booking.customer.name,
       bookingId: booking.bookingId,
-      vehicleType: vehicleLabel,
       pickupLocation: booking.pickupLocation,
       dropLocation: booking.dropLocation,
       travelDate: travelDateStr,
@@ -95,7 +92,6 @@ export async function sendBookingConfirmation(booking: {
   // WhatsApp
   if (settings?.whatsappEnabled) {
     const waBody = bookingConfirmationWhatsApp(booking.bookingId, booking.customer.name, {
-      vehicleType: vehicleLabel,
       pickupLocation: booking.pickupLocation,
       dropLocation: booking.dropLocation,
       travelDate: travelDateStr,
@@ -269,18 +265,10 @@ export async function sendPaymentReminderNotification(booking: {
 
 function getStatusMessage(status: string): string {
   switch (status) {
-    case "APPROVED":
-      return "Your booking has been approved. We will send you a confirmation with pricing details soon.";
     case "CONFIRMED":
       return "Your booking is confirmed! Your vehicle will be ready on the scheduled date.";
-    case "IN_PROGRESS":
-      return "Your trip is now in progress. Have a safe and comfortable journey!";
-    case "COMPLETED":
-      return "Your trip has been completed. Thank you for traveling with us!";
     case "CANCELLED":
       return "Your booking has been cancelled. Contact us if you have any questions.";
-    case "REJECTED":
-      return "We are unable to fulfill your booking request. Please contact us for alternatives.";
     default:
       return "Your booking status has been updated.";
   }
@@ -288,8 +276,7 @@ function getStatusMessage(status: string): string {
 
 function getNotificationType(status: string): NotificationType {
   switch (status) {
-    case "APPROVED": return "BOOKING_APPROVED";
-    case "REJECTED": return "BOOKING_REJECTED";
+    case "CONFIRMED": return "BOOKING_CONFIRMED";
     case "CANCELLED": return "BOOKING_CANCELLED";
     default: return "STATUS_UPDATE";
   }

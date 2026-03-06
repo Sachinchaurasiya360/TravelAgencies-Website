@@ -1,24 +1,9 @@
 import { format } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { BOOKING_PREFIX } from "@/lib/constants";
 
 export async function generateBookingId(): Promise<string> {
-  const today = format(new Date(), "yyyyMMdd");
-  const prefix = `${BOOKING_PREFIX}-${today}-`;
-
-  const lastBooking = await prisma.booking.findFirst({
-    where: { bookingId: { startsWith: prefix } },
-    orderBy: { bookingId: "desc" },
-    select: { bookingId: true },
-  });
-
-  let sequence = 1;
-  if (lastBooking) {
-    const lastSequence = parseInt(lastBooking.bookingId.split("-").pop() || "0", 10);
-    sequence = lastSequence + 1;
-  }
-
-  return `${prefix}${sequence.toString().padStart(4, "0")}`;
+  const count = await prisma.booking.count();
+  return String(count + 1);
 }
 
 export async function generateInvoiceNumber(): Promise<string> {

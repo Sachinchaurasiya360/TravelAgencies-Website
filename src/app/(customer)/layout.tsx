@@ -16,7 +16,7 @@ export default function CustomerLayout({
 
       {/* WhatsApp Floating Button */}
       <a
-        href="https://wa.me/917070416209?text=Hi%2C%20I%20want%20to%20enquire%20about%20vehicle%20rental"
+        href="https://wa.me/917498125466?text=Hi%2C%20I%20want%20to%20enquire%20about%20vehicle%20rental"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-20 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-green-500 text-white shadow-2xl shadow-green-500/30 transition-transform hover:scale-110 md:bottom-6"
@@ -35,14 +35,14 @@ export default function CustomerLayout({
       {/* Mobile Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-gray-200 bg-white md:hidden">
         <a
-          href="tel:+917070416209"
+          href="tel:+917498125466"
           className="flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium text-gray-700"
         >
           <Phone className="h-5 w-5" />
           Call
         </a>
         <a
-          href="https://wa.me/917070416209?text=Hi%2C%20I%20want%20to%20enquire%20about%20vehicle%20rental"
+          href="https://wa.me/917498125466?text=Hi%2C%20I%20want%20to%20enquire%20about%20vehicle%20rental"
           target="_blank"
           rel="noopener noreferrer"
           className="flex flex-1 flex-col items-center gap-1 border-x border-gray-200 py-3 text-xs font-medium text-green-600"

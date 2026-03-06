@@ -7,17 +7,17 @@ import {
 export const metadata: Metadata = {
   title: "Book a Trip - Car & Bus Rental Booking",
   description:
-    "Book your car or bus rental online with Sarthak Tour and Travels. Choose from sedan, SUV, Innova Crysta, tempo traveller, or bus. Easy online booking for local trips, outstation travel, airport transfers, and pilgrimages across Mumbai and Maharashtra.",
+    "Book your car or bus rental online with Sarthak Tour and Travels. Choose from sedan, SUV, Innova Crysta, tempo traveller, or bus. Easy online booking for local trips, outstation travel, airport transfers, and pilgrimages across Pune and Maharashtra.",
   keywords: [
-    "book cab online Mumbai",
+    "book cab online Pune",
     "car rental booking",
     "bus booking online",
-    "tempo traveller booking Mumbai",
+    "tempo traveller booking Pune",
     "outstation cab booking",
-    "airport transfer booking Mumbai",
+    "airport transfer booking Pune",
     "SUV rental booking",
     "Innova Crysta booking",
-    "wedding car booking Mumbai",
+    "wedding car booking Pune",
     "corporate travel booking",
   ],
   alternates: {

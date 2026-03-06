@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const toDate = searchParams.get("toDate");
 
     const bookingWhere: Prisma.BookingWhereInput = {
-      status: { in: ["COMPLETED", "CONFIRMED", "IN_PROGRESS"] },
+      status: "CONFIRMED",
     };
 
     const paymentWhere: Prisma.PaymentWhereInput = {};

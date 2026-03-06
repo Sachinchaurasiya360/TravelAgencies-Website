@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     // Tax collected from bookings in the period
     const bookingWhere: Prisma.BookingWhereInput = {
-      status: { in: ["COMPLETED", "CONFIRMED", "IN_PROGRESS"] },
+      status: "CONFIRMED",
     };
     if (fromDate || toDate) {
       bookingWhere.travelDate = {};

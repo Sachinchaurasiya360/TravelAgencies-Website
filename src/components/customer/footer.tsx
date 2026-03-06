@@ -38,7 +38,7 @@ export function Footer() {
               </div>
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-gray-400">
-              Mumbai&apos;s trusted partner for comfortable and reliable car &amp;
+              Pune&apos;s trusted partner for comfortable and reliable car &amp;
               bus travel across Maharashtra and India.
             </p>
 
@@ -121,16 +121,16 @@ export function Footer() {
             <ul className="space-y-3.5">
               <li>
                 <a
-                  href="tel:+917070416209"
+                  href="tel:+917498125466"
                   className="flex items-start gap-3 text-sm text-gray-400 transition-colors hover:text-orange-400"
                 >
                   <Phone className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
-                  +91 70704 16209
+                  +91 74981 25466
                 </a>
               </li>
               <li>
                 <a
-                  href="https://wa.me/917070416209"
+                  href="https://wa.me/917498125466"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-start gap-3 text-sm text-gray-400 transition-colors hover:text-green-400"
@@ -147,16 +147,16 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:mrsachinchaurasiya@gmail.com"
+                  href="mailto:sarthaktourandtravelpune@gmail.com"
                   className="flex items-start gap-3 text-sm text-gray-400 transition-colors hover:text-orange-400"
                 >
                   <Mail className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
-                  mrsachinchaurasiya@gmail.com
+                  sarthaktourandtravelpune@gmail.com
                 </a>
               </li>
               <li className="flex items-start gap-3 text-sm text-gray-400">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
-                Mumbai, Maharashtra, India
+                Ravet, Pimpri Chinchwad, Pune, 411001
               </li>
             </ul>
           </div>

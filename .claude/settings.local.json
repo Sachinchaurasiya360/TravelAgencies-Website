@@ -7,7 +7,12 @@
       "Bash(npx shadcn@latest add button input card dialog table select badge toast dropdown-menu calendar form sheet tabs textarea skeleton separator label popover command avatar checkbox radio-group switch tooltip --yes)",
       "Bash(xargs sed:*)",
       "Bash(npx next build)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx prisma migrate dev:*)"
     ]
   }
 }

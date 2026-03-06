@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const where = {
       paymentStatus: { in: ["PENDING" as const, "PARTIAL" as const, "OVERDUE" as const] },
       totalAmount: { not: null },
-      status: { notIn: ["CANCELLED" as const, "REJECTED" as const] },
+      status: { notIn: ["CANCELLED" as const] },
     };
 
     const [bookings, total] = await Promise.all([

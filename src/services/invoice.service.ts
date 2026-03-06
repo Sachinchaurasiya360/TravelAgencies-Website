@@ -45,7 +45,7 @@ export async function createInvoice(params: CreateInvoiceParams) {
 
   const serviceDesc =
     params.serviceDescription ||
-    `${booking.vehicleType.replace(/_/g, " ")} - ${booking.pickupLocation} to ${booking.dropLocation}`;
+    `${booking.pickupLocation} to ${booking.dropLocation}`;
 
   const invoice = await prisma.invoice.create({
     data: {

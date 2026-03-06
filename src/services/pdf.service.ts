@@ -192,6 +192,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   <div class="footer">
     <p>This is a computer-generated invoice and does not require a signature.</p>
   </div>
+  <script>window.onload = function() { window.print(); }</script>
 </body>
 </html>`;
 }

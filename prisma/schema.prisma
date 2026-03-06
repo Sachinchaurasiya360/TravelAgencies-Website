@@ -18,14 +18,11 @@ enum UserRole {
 
 enum BookingStatus {
   PENDING
-  APPROVED
   CONFIRMED
-  IN_PROGRESS
-  COMPLETED
   CANCELLED
-  REJECTED
 }
 
+// Kept for backward compatibility with existing records
 enum VehicleType {
   CAR_SEDAN
   CAR_SUV
@@ -37,6 +34,7 @@ enum VehicleType {
   OTHER
 }
 
+// Kept for backward compatibility with existing records
 enum TripType {
   ONE_WAY
   ROUND_TRIP
@@ -47,16 +45,11 @@ enum PaymentStatus {
   PARTIAL
   PAID
   OVERDUE
-  REFUNDED
 }
 
 enum PaymentMethod {
   CASH
-  UPI
-  BANK_TRANSFER
-  CHEQUE
-  CARD
-  OTHER
+  ONLINE
 }
 
 enum RefundStatus {
@@ -90,14 +83,12 @@ enum NotificationStatus {
 
 enum NotificationType {
   BOOKING_CONFIRMATION
-  BOOKING_APPROVED
-  BOOKING_REJECTED
+  BOOKING_CONFIRMED
   BOOKING_CANCELLED
   STATUS_UPDATE
   PAYMENT_REMINDER
   PAYMENT_RECEIVED
   INVOICE_SENT
-  REFUND_PROCESSED
   GENERAL
 }
 
@@ -177,10 +168,10 @@ model Booking {
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
 
-  tripType          TripType
-  vehicleType       VehicleType
+  tripType          TripType?
+  vehicleType       VehicleType?
   vehiclePreference String?
-  passengerCount    Int
+  passengerCount    Int?
   travelDate        DateTime
   returnDate        DateTime?
   pickupLocation    String

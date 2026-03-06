@@ -22,25 +22,25 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Sarthak Tour and Travels | Car & Bus Rental in Mumbai, Maharashtra",
+  title: "Sarthak Tour and Travels | Car & Bus Rental in Pune, Maharashtra",
   description:
-    "Book reliable car and bus rental services in Mumbai. Sedan, SUV, Innova, tempo traveller & bus hire for local, outstation, airport transfers & pilgrimages across Maharashtra and India. 24/7 support.",
+    "Book reliable car and bus rental services in Pune. Sedan, SUV, Innova, tempo traveller & bus hire for local, outstation, airport transfers & pilgrimages across Maharashtra and India. 24/7 support.",
   keywords: [
-    "car rental mumbai",
-    "bus rental mumbai",
-    "tempo traveller hire mumbai",
-    "outstation cab mumbai",
-    "airport transfer mumbai",
+    "car rental pune",
+    "bus rental pune",
+    "tempo traveller hire pune",
+    "outstation cab pune",
+    "airport transfer pune",
     "innova crysta rental",
     "bus hire maharashtra",
     "sarthak tour and travels",
-    "car booking mumbai",
-    "travel agency mumbai",
+    "car booking pune",
+    "travel agency pune",
   ],
   openGraph: {
-    title: "Sarthak Tour and Travels | Car & Bus Rental in Mumbai",
+    title: "Sarthak Tour and Travels | Car & Bus Rental in Pune",
     description:
-      "Premium car and bus rental services in Mumbai. Sedan, SUV, tempo traveller & bus bookings with professional drivers. 24/7 availability.",
+      "Premium car and bus rental services in Pune. Sedan, SUV, tempo traveller & bus bookings with professional drivers. 24/7 availability.",
     type: "website",
   },
 };
@@ -73,7 +73,7 @@ const services = [
   {
     icon: Plane,
     title: "Airport Transfer",
-    desc: "Reliable pickup and drop to Mumbai, Pune & Nashik airports. Flight tracking included.",
+    desc: "Reliable pickup and drop to Pune, Mumbai & Nashik airports. Flight tracking included.",
     passengers: "1-7",
   },
   {
@@ -138,7 +138,7 @@ const whyUs = [
 const testimonials = [
   {
     name: "Priya Sharma",
-    location: "Mumbai",
+    location: "Pune",
     trip: "Family Trip",
     rating: 5,
     text: "Booked a Tempo Traveller for our family trip to Mahabaleshwar. The driver was punctual, vehicle was spotless, and the whole experience was seamless. Highly recommend!",
@@ -148,7 +148,7 @@ const testimonials = [
     location: "Pune",
     trip: "Corporate Event",
     rating: 5,
-    text: "We've been using Sarthak Travels for all our corporate travel needs. Professional service, well-maintained fleet, and always on time. Best in Mumbai!",
+    text: "We've been using Sarthak Travels for all our corporate travel needs. Professional service, well-maintained fleet, and always on time. Best in Pune!",
   },
   {
     name: "Anita Deshmukh",
@@ -160,20 +160,20 @@ const testimonials = [
 ];
 
 const popularRoutes = [
-  "Mumbai to Pune",
-  "Mumbai to Lonavala",
-  "Mumbai to Shirdi",
-  "Mumbai to Mahabaleshwar",
-  "Mumbai to Goa",
-  "Mumbai to Nashik",
-  "Mumbai to Alibaug",
-  "Mumbai Airport Transfer",
+  "Pune to Mumbai",
+  "Pune to Lonavala",
+  "Pune to Shirdi",
+  "Pune to Mahabaleshwar",
+  "Pune to Goa",
+  "Pune to Nashik",
+  "Pune to Alibaug",
+  "Pune Airport Transfer",
 ];
 
 const faqs = [
   {
     q: "How do I book a vehicle?",
-    a: "Simply fill out our online booking form with your travel details, or call us at +91 70704 16209. We'll confirm your booking within hours.",
+    a: "Simply fill out our online booking form with your travel details, or call us at +91 74981 25466. We'll confirm your booking within hours.",
   },
   {
     q: "What types of vehicles are available?",
@@ -181,7 +181,7 @@ const faqs = [
   },
   {
     q: "Is there a minimum booking duration?",
-    a: "For local trips within Mumbai, the minimum is 4 hours / 40 km. For outstation trips, there's no minimum — we accommodate one-way and round trips.",
+    a: "For local trips within Pune, the minimum is 4 hours / 40 km. For outstation trips, there\u2019s no minimum \u2014 we accommodate one-way and round trips.",
   },
   {
     q: "Are your prices inclusive of tolls and taxes?",
@@ -193,7 +193,7 @@ const faqs = [
   },
   {
     q: "Do you provide airport pickup and drop services?",
-    a: "Yes! We provide reliable airport transfers to and from Mumbai, Pune, and Nashik airports with flight tracking and meet & greet service.",
+    a: "Yes! We provide reliable airport transfers to and from Pune, Mumbai, and Nashik airports with flight tracking and meet & greet service.",
   },
 ];
 
@@ -215,7 +215,7 @@ export default function HomePage() {
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
               <span className="mb-4 inline-block rounded-full bg-orange-500/10 px-4 py-1.5 text-sm font-semibold text-orange-400 ring-1 ring-orange-500/20">
-                Mumbai&apos;s Trusted Travel Partner
+                Pune&apos;s Trusted Travel Partner
               </span>
               <h1 className="text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
                 Your Journey,{" "}
@@ -249,14 +249,14 @@ export default function HomePage() {
               </div>
               <div className="mt-8 flex items-center gap-6 text-sm text-gray-400">
                 <a
-                  href="tel:+917070416209"
+                  href="tel:+917498125466"
                   className="flex items-center gap-2 transition-colors hover:text-orange-400"
                 >
                   <Phone className="h-4 w-4" />
-                  +91 70704 16209
+                  +91 74981 25466
                 </a>
                 <a
-                  href="https://wa.me/917070416209?text=Hi%2C%20I%20want%20to%20enquire%20about%20vehicle%20rental"
+                  href="https://wa.me/917498125466?text=Hi%2C%20I%20want%20to%20enquire%20about%20vehicle%20rental"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 transition-colors hover:text-green-400"
@@ -495,7 +495,7 @@ export default function HomePage() {
               Where We Go
             </span>
             <h2 className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Popular Routes from Mumbai
+              Popular Routes from Pune
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-gray-500">
               We cover all major destinations across Maharashtra and beyond. Book
@@ -557,7 +557,7 @@ export default function HomePage() {
             </h2>
             <p className="mt-3 max-w-lg text-orange-100">
               Get an instant quote with no hidden charges. Available 24/7 across
-              Mumbai and all of Maharashtra.
+              Pune and all of Maharashtra.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
@@ -575,7 +575,7 @@ export default function HomePage() {
               className="border-2 border-white/30 bg-transparent text-white hover:bg-white/10"
               asChild
             >
-              <a href="tel:+917070416209">
+              <a href="tel:+917498125466">
                 <Phone className="mr-2 h-5 w-5" />
                 Call Now
               </a>
@@ -586,7 +586,7 @@ export default function HomePage() {
 
       {/* WhatsApp Floating Button */}
       <a
-        href="https://wa.me/917070416209?text=Hi%2C%20I%20want%20to%20enquire%20about%20vehicle%20rental"
+        href="https://wa.me/917498125466?text=Hi%2C%20I%20want%20to%20enquire%20about%20vehicle%20rental"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-green-500 text-white shadow-2xl shadow-green-500/30 transition-transform hover:scale-110"
@@ -605,14 +605,14 @@ export default function HomePage() {
       {/* Mobile Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-gray-200 bg-white md:hidden">
         <a
-          href="tel:+917070416209"
+          href="tel:+917498125466"
           className="flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium text-gray-700"
         >
           <Phone className="h-5 w-5" />
           Call
         </a>
         <a
-          href="https://wa.me/917070416209?text=Hi%2C%20I%20want%20to%20enquire%20about%20vehicle%20rental"
+          href="https://wa.me/917498125466?text=Hi%2C%20I%20want%20to%20enquire%20about%20vehicle%20rental"
           target="_blank"
           rel="noopener noreferrer"
           className="flex flex-1 flex-col items-center gap-1 border-x border-gray-200 py-3 text-xs font-medium text-green-600"

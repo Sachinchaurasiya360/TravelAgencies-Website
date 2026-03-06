@@ -53,13 +53,12 @@ export async function sendEmail(params: SendEmailParams): Promise<{
 export function bookingConfirmationEmail(data: {
   customerName: string;
   bookingId: string;
-  vehicleType: string;
   pickupLocation: string;
   dropLocation: string;
   travelDate: string;
 }): { subject: string; html: string } {
   return {
-    subject: `Booking Confirmed - ${data.bookingId}`,
+    subject: `Booking Confirmed - #${data.bookingId}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #2563eb; color: white; padding: 20px; text-align: center;">
@@ -70,15 +69,14 @@ export function bookingConfirmationEmail(data: {
           <p>Dear ${data.customerName},</p>
           <p>Thank you for your booking request. Here are your booking details:</p>
           <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-            <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Booking ID</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">${data.bookingId}</td></tr>
-            <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Vehicle</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${data.vehicleType}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Booking ID</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">#${data.bookingId}</td></tr>
             <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Pickup</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${data.pickupLocation}</td></tr>
             <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Drop</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${data.dropLocation}</td></tr>
             <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Travel Date</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${data.travelDate}</td></tr>
           </table>
           <p>Our team will review your request and get back to you shortly with confirmation and pricing.</p>
-          <p>Please save your Booking ID <strong>${data.bookingId}</strong> for tracking.</p>
-          <p style="color: #666; font-size: 12px; margin-top: 30px;">If you have any questions, contact us at +91 70704 16209</p>
+          <p>Please save your Booking ID <strong>#${data.bookingId}</strong> for tracking.</p>
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">If you have any questions, contact us at +91 74981 25466</p>
         </div>
       </div>
     `,
@@ -103,7 +101,7 @@ export function statusUpdateEmail(data: {
           <p>Dear ${data.customerName},</p>
           <p>Your booking <strong>${data.bookingId}</strong> has been updated to: <strong>${data.newStatus}</strong></p>
           <p>${data.message}</p>
-          <p style="color: #666; font-size: 12px; margin-top: 30px;">If you have any questions, contact us at +91 70704 16209</p>
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">If you have any questions, contact us at +91 74981 25466</p>
         </div>
       </div>
     `,

@@ -49,11 +49,11 @@ export function Header() {
         {/* Desktop Right Section */}
         <div className="hidden items-center gap-4 lg:flex">
           <a
-            href="tel:+917070416209"
+            href="tel:+917498125466"
             className="flex items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-orange-600"
           >
             <Phone className="h-4 w-4" />
-            <span>+91 70704 16209</span>
+            <span>+91 74981 25466</span>
           </a>
           <Button
             asChild
@@ -67,7 +67,7 @@ export function Header() {
         <div className="flex items-center gap-2 lg:hidden">
           {/* Phone CTA visible on mobile header */}
           <a
-            href="tel:+917070416209"
+            href="tel:+917498125466"
             className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-50 text-orange-500 transition-colors hover:bg-orange-100"
             aria-label="Call us"
           >
@@ -115,14 +115,14 @@ export function Header() {
                 <div className="mt-auto border-t border-gray-100 px-6 py-5">
                   <div className="flex flex-col gap-3">
                     <a
-                      href="tel:+917070416209"
+                      href="tel:+917498125466"
                       className="flex items-center gap-3 text-sm font-medium text-gray-600 transition-colors hover:text-orange-600"
                     >
                       <Phone className="h-4 w-4 text-orange-500" />
-                      +91 70704 16209
+                      +91 74981 25466
                     </a>
                     <a
-                      href="https://wa.me/917070416209"
+                      href="https://wa.me/917498125466"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 text-sm font-medium text-gray-600 transition-colors hover:text-green-600"

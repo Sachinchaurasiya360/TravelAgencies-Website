@@ -12,46 +12,23 @@ export const REFUND_PREFIX = "REF";
 
 // Plain enum value arrays — safe for client components (no @prisma/client import)
 export const BOOKING_STATUSES = [
-  "PENDING", "APPROVED", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "REJECTED",
+  "PENDING", "CONFIRMED", "CANCELLED",
 ] as const;
-export const VEHICLE_TYPES = [
-  "CAR_SEDAN", "CAR_SUV", "CAR_HATCHBACK", "CAR_LUXURY", "TEMPO_TRAVELLER", "MINI_BUS", "BUS", "OTHER",
-] as const;
-export const TRIP_TYPES = ["ONE_WAY", "ROUND_TRIP"] as const;
-export const PAYMENT_METHODS = ["CASH", "UPI", "BANK_TRANSFER", "CHEQUE", "CARD", "OTHER"] as const;
+export const PAYMENT_METHODS = ["CASH", "ONLINE"] as const;
 export const REFUND_STATUSES = ["REQUESTED", "APPROVED", "PROCESSED", "REJECTED"] as const;
 
 type BookingStatusValue = (typeof BOOKING_STATUSES)[number];
 
 export const ALLOWED_STATUS_TRANSITIONS: Record<BookingStatusValue, BookingStatusValue[]> = {
-  PENDING: ["APPROVED", "REJECTED"],
-  APPROVED: ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["IN_PROGRESS", "CANCELLED"],
-  IN_PROGRESS: ["COMPLETED", "CANCELLED"],
-  COMPLETED: [],
+  PENDING: ["CONFIRMED", "CANCELLED"],
+  CONFIRMED: ["CANCELLED"],
   CANCELLED: [],
-  REJECTED: [],
-};
-
-export const VEHICLE_TYPE_LABELS: Record<string, string> = {
-  CAR_SEDAN: "Car - Sedan",
-  CAR_SUV: "Car - SUV",
-  CAR_HATCHBACK: "Car - Hatchback",
-  CAR_LUXURY: "Car - Luxury",
-  TEMPO_TRAVELLER: "Tempo Traveller",
-  MINI_BUS: "Mini Bus",
-  BUS: "Bus",
-  OTHER: "Other",
 };
 
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
   PENDING: "Pending",
-  APPROVED: "Approved",
   CONFIRMED: "Confirmed",
-  IN_PROGRESS: "In Progress",
-  COMPLETED: "Completed",
   CANCELLED: "Cancelled",
-  REJECTED: "Rejected",
 };
 
 export const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -59,19 +36,9 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   PARTIAL: "Partial",
   PAID: "Paid",
   OVERDUE: "Overdue",
-  REFUNDED: "Refunded",
 };
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: "Cash",
-  UPI: "UPI",
-  BANK_TRANSFER: "Bank Transfer",
-  CHEQUE: "Cheque",
-  CARD: "Card",
-  OTHER: "Other",
-};
-
-export const TRIP_TYPE_LABELS: Record<string, string> = {
-  ONE_WAY: "One Way",
-  ROUND_TRIP: "Round Trip",
+  ONLINE: "Online",
 };

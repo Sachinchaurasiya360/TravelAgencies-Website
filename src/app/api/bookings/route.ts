@@ -12,6 +12,7 @@ import {
 } from "@/lib/api-helpers";
 import { publicBookingLimit } from "@/lib/rate-limit";
 import { BookingStatus, Prisma, ActivityAction } from "@prisma/client";
+
 import { sendBookingConfirmation } from "@/services/notification.service";
 import { logActivity } from "@/services/activity-log.service";
 
@@ -69,19 +70,10 @@ export async function POST(request: NextRequest) {
       data: {
         bookingId,
         customerId: customer.id,
-        tripType: data.tripType,
-        vehicleType: data.vehicleType,
-        vehiclePreference: data.vehiclePreference || null,
-        passengerCount: data.passengerCount,
         travelDate: new Date(data.travelDate),
-        returnDate: data.returnDate ? new Date(data.returnDate) : null,
         pickupLocation: data.pickupLocation,
-        pickupAddress: data.pickupAddress || null,
         dropLocation: data.dropLocation,
-        dropAddress: data.dropAddress || null,
         pickupTime: data.pickupTime || null,
-        passengerDetails: data.passengerDetails ?? Prisma.DbNull,
-        specialRequests: data.specialRequests || null,
         status: BookingStatus.PENDING,
       },
     });
@@ -100,7 +92,6 @@ export async function POST(request: NextRequest) {
     sendBookingConfirmation({
       id: booking.id,
       bookingId: booking.bookingId,
-      vehicleType: booking.vehicleType,
       pickupLocation: booking.pickupLocation,
       dropLocation: booking.dropLocation,
       travelDate: booking.travelDate,
@@ -132,8 +123,6 @@ export async function GET(request: NextRequest) {
     const { page, limit, skip, sortBy, sortOrder } = getPaginationParams(searchParams);
 
     const status = searchParams.get("status") as BookingStatus | null;
-    const vehicleType = searchParams.get("vehicleType");
-    const tripType = searchParams.get("tripType");
     const paymentStatus = searchParams.get("paymentStatus");
     const search = searchParams.get("search");
     const fromDate = searchParams.get("fromDate");
@@ -142,8 +131,6 @@ export async function GET(request: NextRequest) {
     const where: Prisma.BookingWhereInput = {};
 
     if (status) where.status = status;
-    if (vehicleType) where.vehicleType = vehicleType as Prisma.EnumVehicleTypeFilter;
-    if (tripType) where.tripType = tripType as Prisma.EnumTripTypeFilter;
     if (paymentStatus) where.paymentStatus = paymentStatus as Prisma.EnumPaymentStatusFilter;
 
     if (search) {

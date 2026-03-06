@@ -60,14 +60,13 @@ export async function sendWhatsApp(params: SendWhatsAppParams): Promise<{
 export function bookingConfirmationWhatsApp(
   bookingId: string,
   customerName: string,
-  details: { vehicleType: string; pickupLocation: string; dropLocation: string; travelDate: string }
+  details: { pickupLocation: string; dropLocation: string; travelDate: string }
 ): string {
   return `Hello ${customerName}! 🚗
 
 Your booking request has been received.
 
 📋 *Booking ID:* ${bookingId}
-🚘 *Vehicle:* ${details.vehicleType}
 📍 *Pickup:* ${details.pickupLocation}
 📍 *Drop:* ${details.dropLocation}
 📅 *Date:* ${details.travelDate}

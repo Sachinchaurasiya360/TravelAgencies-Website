@@ -4,20 +4,22 @@ export function LocalBusinessSchema() {
     "@type": "TravelAgency",
     name: "Sarthak Tour and Travels",
     description:
-      "Premium car and bus rental services in Mumbai, Maharashtra. Sedan, SUV, tempo traveller, and bus bookings for local and outstation travel.",
+      "Premium car and bus rental services in Pune, Maharashtra. Sedan, SUV, tempo traveller, and bus bookings for local and outstation travel.",
     url: "https://sarthaktourandtravels.com",
-    telephone: "+917070416209",
-    email: "mrsachinchaurasiya@gmail.com",
+    telephone: "+917498125466",
+    email: "sarthaktourandtravelpune@gmail.com",
     address: {
       "@type": "PostalAddress",
-      addressLocality: "Mumbai",
+      streetAddress: "Ravet, Pimpri Chinchwad",
+      addressLocality: "Pune",
       addressRegion: "Maharashtra",
+      postalCode: "411001",
       addressCountry: "IN",
     },
     geo: {
       "@type": "GeoCoordinates",
-      latitude: "19.0760",
-      longitude: "72.8777",
+      latitude: "18.6492",
+      longitude: "73.7471",
     },
     areaServed: [
       { "@type": "State", name: "Maharashtra" },
@@ -153,7 +155,7 @@ export function ServiceSchema() {
             "@type": "Service",
             name: "Sedan Car Rental",
             description:
-              "Comfortable sedan cars for local and outstation travel in Mumbai and Maharashtra.",
+              "Comfortable sedan cars for local and outstation travel in Pune and Maharashtra.",
           },
         },
         {

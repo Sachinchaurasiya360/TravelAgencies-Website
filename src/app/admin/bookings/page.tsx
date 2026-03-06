@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -19,7 +19,6 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDate } from "@/lib/helpers/date";
 import {
-  VEHICLE_TYPE_LABELS,
   BOOKING_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
 } from "@/lib/constants";
@@ -29,8 +28,6 @@ interface Booking {
   id: string;
   bookingId: string;
   status: string;
-  vehicleType: string;
-  tripType: string;
   travelDate: string;
   paymentStatus: string;
   totalAmount: string | null;
@@ -177,7 +174,6 @@ export default function BookingsPage() {
                     <tr className="text-muted-foreground border-b text-left">
                       <th className="p-4 font-medium">Booking ID</th>
                       <th className="p-4 font-medium">Customer</th>
-                      <th className="p-4 font-medium">Vehicle</th>
                       <th className="p-4 font-medium">Travel Date</th>
                       <th className="p-4 font-medium">Status</th>
                       <th className="p-4 font-medium">Payment</th>
@@ -196,7 +192,7 @@ export default function BookingsPage() {
                             href={`/admin/bookings/${booking.id}`}
                             className="font-medium text-blue-600 hover:underline"
                           >
-                            {booking.bookingId}
+                            #{booking.bookingId}
                           </Link>
                         </td>
                         <td className="p-4">
@@ -206,10 +202,6 @@ export default function BookingsPage() {
                               {booking.customer.phone}
                             </p>
                           </div>
-                        </td>
-                        <td className="p-4">
-                          {VEHICLE_TYPE_LABELS[booking.vehicleType] ||
-                            booking.vehicleType}
                         </td>
                         <td className="p-4">
                           {formatDate(booking.travelDate)}

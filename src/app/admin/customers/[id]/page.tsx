@@ -10,14 +10,12 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDate, formatDateTime } from "@/lib/helpers/date";
-import { VEHICLE_TYPE_LABELS } from "@/lib/constants";
 import { ArrowLeft, User, Mail, Phone, CalendarCheck } from "lucide-react";
 
 interface CustomerBooking {
   id: string;
   bookingId: string;
   status: string;
-  vehicleType: string;
   travelDate: string;
   totalAmount: string | null;
   paymentStatus: string;
@@ -133,7 +131,6 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 <thead>
                   <tr className="text-muted-foreground border-b text-left">
                     <th className="p-4 font-medium">Booking ID</th>
-                    <th className="p-4 font-medium">Vehicle</th>
                     <th className="p-4 font-medium">Travel Date</th>
                     <th className="p-4 font-medium">Status</th>
                     <th className="p-4 font-medium">Payment</th>
@@ -154,9 +151,6 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                         >
                           {booking.bookingId}
                         </Link>
-                      </td>
-                      <td className="p-4">
-                        {VEHICLE_TYPE_LABELS[booking.vehicleType] || booking.vehicleType}
                       </td>
                       <td className="p-4">{formatDate(booking.travelDate)}</td>
                       <td className="p-4">

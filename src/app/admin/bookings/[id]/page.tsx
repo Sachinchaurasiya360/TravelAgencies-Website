@@ -14,21 +14,16 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDateTime } from "@/lib/helpers/date";
 import {
-  VEHICLE_TYPE_LABELS,
-  TRIP_TYPE_LABELS,
   ALLOWED_STATUS_TRANSITIONS,
   BOOKING_STATUS_LABELS,
 } from "@/lib/constants";
 import {
   ArrowLeft,
   MapPin,
-  Calendar,
-  Users,
-  Car,
-  Clock,
   Send,
   IndianRupee,
   MessageSquare,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import type { BOOKING_STATUSES } from "@/lib/constants";
@@ -39,18 +34,10 @@ interface BookingDetail {
   id: string;
   bookingId: string;
   status: BookingStatus;
-  tripType: string;
-  vehicleType: string;
-  vehiclePreference: string | null;
-  passengerCount: number;
   travelDate: string;
-  returnDate: string | null;
   pickupLocation: string;
-  pickupAddress: string | null;
   dropLocation: string;
-  dropAddress: string | null;
   pickupTime: string | null;
-  specialRequests: string | null;
   baseFare: string | null;
   taxAmount: string | null;
   tollCharges: string | null;
@@ -62,7 +49,6 @@ interface BookingDetail {
   paymentStatus: string;
   paymentDueDate: string | null;
   adminRemarks: string | null;
-  rejectionReason: string | null;
   cancellationReason: string | null;
   createdAt: string;
   customer: { id: string; name: string; phone: string; email: string | null };
@@ -99,6 +85,9 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   // Notes
   const [noteContent, setNoteContent] = useState("");
   const [noteLoading, setNoteLoading] = useState(false);
+
+  // Generate Bill
+  const [billLoading, setBillLoading] = useState(false);
 
   async function fetchBooking() {
     try {
@@ -200,6 +189,29 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  async function handleGenerateBill() {
+    setBillLoading(true);
+    try {
+      const res = await fetch("/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: id }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        const invoiceId = result.data.id;
+        window.open(`/api/invoices/${invoiceId}/pdf`, "_blank");
+        toast.success("Bill generated — use Print > Save as PDF to download");
+      } else {
+        toast.error(result.error || "Failed to generate bill");
+      }
+    } catch {
+      toast.error("Failed to generate bill");
+    } finally {
+      setBillLoading(false);
+    }
+  }
+
   if (loading) return <LoadingSpinner />;
   if (!booking) return null;
 
@@ -216,7 +228,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{booking.bookingId}</h1>
+            <h1 className="text-2xl font-bold">Booking #{booking.bookingId}</h1>
             <StatusBadge status={booking.status} />
           </div>
           <p className="text-muted-foreground text-sm">
@@ -225,28 +237,32 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      {/* Status Actions */}
-      {allowedTransitions.length > 0 && (
+      {/* Actions */}
+      {(allowedTransitions.length > 0 || booking.baseFare || !booking.baseFare) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Actions</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {allowedTransitions.map((status) => {
-              const needsReason = status === "CANCELLED" || status === "REJECTED";
+              const needsReason = status === "CANCELLED";
               const variant =
-                status === "APPROVED" || status === "CONFIRMED"
+                status === "CONFIRMED"
                   ? "default"
-                  : status === "CANCELLED" || status === "REJECTED"
+                  : status === "CANCELLED"
                     ? "destructive"
                     : "outline";
               return (
                 <Button
                   key={status}
                   variant={variant as "default" | "destructive" | "outline"}
-                  onClick={() =>
-                    setStatusDialog({ open: true, status, needsReason })
-                  }
+                  onClick={() => {
+                    if (status === "CONFIRMED" && !booking.baseFare) {
+                      toast.error("Please assign pricing before confirming the booking");
+                      return;
+                    }
+                    setStatusDialog({ open: true, status, needsReason });
+                  }}
                 >
                   {BOOKING_STATUS_LABELS[status] || status}
                 </Button>
@@ -259,6 +275,16 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               >
                 <IndianRupee className="mr-2 h-4 w-4" />
                 Assign Pricing
+              </Button>
+            )}
+            {booking.baseFare && (
+              <Button
+                variant="outline"
+                onClick={handleGenerateBill}
+                disabled={billLoading}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {billLoading ? "Generating..." : "Generate Bill"}
               </Button>
             )}
           </CardContent>
@@ -274,31 +300,11 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-muted-foreground">Trip Type</p>
-                <p className="font-medium">{TRIP_TYPE_LABELS[booking.tripType]}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Vehicle</p>
-                <p className="font-medium">{VEHICLE_TYPE_LABELS[booking.vehicleType]}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Passengers</p>
-                <p className="font-medium">{booking.passengerCount}</p>
-              </div>
-              <div>
                 <p className="text-muted-foreground">Travel Date</p>
                 <p className="font-medium">
                   {new Date(booking.travelDate).toLocaleDateString("en-IN")}
                 </p>
               </div>
-              {booking.returnDate && (
-                <div>
-                  <p className="text-muted-foreground">Return Date</p>
-                  <p className="font-medium">
-                    {new Date(booking.returnDate).toLocaleDateString("en-IN")}
-                  </p>
-                </div>
-              )}
               {booking.pickupTime && (
                 <div>
                   <p className="text-muted-foreground">Pickup Time</p>
@@ -313,9 +319,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 <div>
                   <p className="text-muted-foreground text-xs">Pickup</p>
                   <p className="text-sm font-medium">{booking.pickupLocation}</p>
-                  {booking.pickupAddress && (
-                    <p className="text-muted-foreground text-xs">{booking.pickupAddress}</p>
-                  )}
                 </div>
               </div>
               <div className="flex items-start gap-2">
@@ -323,19 +326,9 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 <div>
                   <p className="text-muted-foreground text-xs">Drop</p>
                   <p className="text-sm font-medium">{booking.dropLocation}</p>
-                  {booking.dropAddress && (
-                    <p className="text-muted-foreground text-xs">{booking.dropAddress}</p>
-                  )}
                 </div>
               </div>
             </div>
-
-            {booking.specialRequests && (
-              <div className="border-t pt-4">
-                <p className="text-muted-foreground text-xs">Special Requests</p>
-                <p className="text-sm">{booking.specialRequests}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -600,20 +593,13 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         }
         confirmLabel={statusDialog.status ? BOOKING_STATUS_LABELS[statusDialog.status] : "Confirm"}
         variant={
-          statusDialog.status === "CANCELLED" || statusDialog.status === "REJECTED"
+          statusDialog.status === "CANCELLED"
             ? "destructive"
             : "default"
         }
         onConfirm={handleStatusChange}
         loading={statusLoading}
       />
-
-      {/* Reason input for status dialog */}
-      {statusDialog.open && statusDialog.needsReason && (
-        <div className="fixed inset-0 z-40" style={{ pointerEvents: "none" }}>
-          {/* The ConfirmDialog handles this - we put the reason in the state */}
-        </div>
-      )}
     </div>
   );
 }

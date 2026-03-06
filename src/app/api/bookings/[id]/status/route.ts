@@ -41,24 +41,12 @@ export async function PATCH(
     const updateData: Record<string, unknown> = { status: newStatus };
 
     switch (newStatus) {
-      case BookingStatus.APPROVED:
-        updateData.approvedAt = new Date();
-        break;
       case BookingStatus.CONFIRMED:
         updateData.confirmedAt = new Date();
-        break;
-      case BookingStatus.IN_PROGRESS:
-        updateData.startedAt = new Date();
-        break;
-      case BookingStatus.COMPLETED:
-        updateData.completedAt = new Date();
         break;
       case BookingStatus.CANCELLED:
         updateData.cancelledAt = new Date();
         updateData.cancellationReason = reason || null;
-        break;
-      case BookingStatus.REJECTED:
-        updateData.rejectionReason = reason || null;
         break;
     }
 
