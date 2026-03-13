@@ -1,22 +1,57 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import { createBookingSchema, type CreateBookingInput } from "@/validators/booking.validator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   CheckCircle2,
   Copy,
   ArrowRight,
+  CalendarIcon,
+  Clock,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// Generate time options in 30-minute intervals
+const timeOptions: string[] = [];
+for (let h = 0; h < 24; h++) {
+  for (const m of [0, 30]) {
+    const hour = h.toString().padStart(2, "0");
+    const minute = m.toString().padStart(2, "0");
+    timeOptions.push(`${hour}:${minute}`);
+  }
+}
+
+function formatTime12h(time24: string): string {
+  const [h, m] = time24.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${hour12}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
 
 export default function BookingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dateOpen, setDateOpen] = useState(false);
   const [bookingResult, setBookingResult] = useState<{
     bookingId: string;
     message: string;
@@ -25,6 +60,7 @@ export default function BookingPage() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<CreateBookingInput>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -173,13 +209,42 @@ export default function BookingPage() {
             <CardTitle className="text-lg">Travel Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Date Picker */}
             <div>
-              <Label htmlFor="travelDate">Travel Date *</Label>
-              <Input
-                id="travelDate"
-                type="date"
-                className="mt-1"
-                {...register("travelDate")}
+              <Label>Travel Date *</Label>
+              <Controller
+                control={control}
+                name="travelDate"
+                render={({ field }) => (
+                  <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "mt-1 w-full justify-start text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {field.value
+                          ? format(field.value, "PPP")
+                          : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => {
+                          field.onChange(date);
+                          setDateOpen(false);
+                        }}
+                        disabled={(date) => date < new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                )}
               />
               {errors.travelDate && (
                 <p className="mt-1 text-sm text-red-500">{errors.travelDate.message}</p>
@@ -213,13 +278,32 @@ export default function BookingPage() {
               </div>
             </div>
 
+            {/* Time Picker */}
             <div>
-              <Label htmlFor="pickupTime">Preferred Pickup Time</Label>
-              <Input
-                id="pickupTime"
-                type="time"
-                className="mt-1"
-                {...register("pickupTime")}
+              <Label>Preferred Pickup Time</Label>
+              <Controller
+                control={control}
+                name="pickupTime"
+                render={({ field }) => (
+                  <Select
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <div className="flex items-center">
+                        <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <SelectValue placeholder="Select a time" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeOptions.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {formatTime12h(time)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
             </div>
           </CardContent>

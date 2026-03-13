@@ -33,6 +33,7 @@ export async function PATCH(
       driverAllowance: parsed.data.driverAllowance,
       extraCharges: parsed.data.extraCharges,
       discount: parsed.data.discount,
+      includeGst: parsed.data.includeGst,
     });
 
     const updated = await prisma.booking.update({
@@ -46,6 +47,7 @@ export async function PATCH(
         extraChargesNote: parsed.data.extraChargesNote || null,
         discount: totals.discount,
         totalAmount: totals.totalAmount,
+        includeGst: parsed.data.includeGst,
         paymentDueDate: parsed.data.paymentDueDate
           ? new Date(parsed.data.paymentDueDate)
           : null,

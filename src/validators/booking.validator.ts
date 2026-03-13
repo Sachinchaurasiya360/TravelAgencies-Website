@@ -24,6 +24,7 @@ export const assignPricingSchema = z.object({
   extraCharges: z.number().min(0).default(0),
   extraChargesNote: z.string().max(500).optional(),
   discount: z.number().min(0).default(0),
+  includeGst: z.boolean().default(false),
   paymentDueDate: z.coerce.date().optional(),
 });
 

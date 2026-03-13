@@ -48,6 +48,7 @@ export function calculateBookingTotal(params: {
   extraCharges?: number;
   discount?: number;
   isInterState?: boolean;
+  includeGst?: boolean;
 }): {
   baseFare: number;
   taxAmount: number;
@@ -58,12 +59,15 @@ export function calculateBookingTotal(params: {
   totalAmount: number;
 } {
   const { baseFare, tollCharges = 0, driverAllowance = 0, extraCharges = 0, discount = 0 } = params;
-  const gst = calculateGst(baseFare, params.isInterState ?? false);
-  const totalAmount = baseFare + gst.totalTax + tollCharges + driverAllowance + extraCharges - discount;
+  const includeGst = params.includeGst ?? true;
+  const taxAmount = includeGst
+    ? calculateGst(baseFare, params.isInterState ?? false).totalTax
+    : 0;
+  const totalAmount = baseFare + taxAmount + tollCharges + driverAllowance + extraCharges - discount;
 
   return {
     baseFare,
-    taxAmount: gst.totalTax,
+    taxAmount,
     tollCharges,
     driverAllowance,
     extraCharges,

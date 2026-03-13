@@ -20,6 +20,7 @@ import {
   Plane,
   MessageCircle,
 } from "lucide-react";
+import { ImageCarousel } from "@/components/customer/image-carousel";
 
 export const metadata: Metadata = {
   title: "Sarthak Tour and Travels | Car & Bus Rental in Pune, Maharashtra",
@@ -170,32 +171,6 @@ const popularRoutes = [
   "Pune Airport Transfer",
 ];
 
-const faqs = [
-  {
-    q: "How do I book a vehicle?",
-    a: "Simply fill out our online booking form with your travel details, or call us at +91 74981 25466. We'll confirm your booking within hours.",
-  },
-  {
-    q: "What types of vehicles are available?",
-    a: "We offer sedans (Swift Dzire, Etios), SUVs (Innova Crysta, Ertiga), tempo travellers (12-20 seater), mini buses, and full-size coaches (up to 50 seats).",
-  },
-  {
-    q: "Is there a minimum booking duration?",
-    a: "For local trips within Pune, the minimum is 4 hours / 40 km. For outstation trips, there\u2019s no minimum \u2014 we accommodate one-way and round trips.",
-  },
-  {
-    q: "Are your prices inclusive of tolls and taxes?",
-    a: "Base fare is quoted separately. Toll charges, parking fees, and GST (5%) are added transparently. No hidden fees.",
-  },
-  {
-    q: "Can I cancel or modify my booking?",
-    a: "Yes, you can cancel or modify up to 24 hours before the trip at no extra charge. Cancellation fees apply for last-minute changes.",
-  },
-  {
-    q: "Do you provide airport pickup and drop services?",
-    a: "Yes! We provide reliable airport transfers to and from Pune, Mumbai, and Nashik airports with flight tracking and meet & greet service.",
-  },
-];
 
 export default function HomePage() {
   return (
@@ -516,37 +491,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="px-4 py-16 md:py-24" id="faq">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center">
-            <span className="text-sm font-semibold uppercase tracking-widest text-orange-500">
-              Common Questions
-            </span>
-            <h2 className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Frequently Asked Questions
-            </h2>
-          </div>
-          <div className="mt-12 space-y-4">
-            {faqs.map((faq) => (
-              <details
-                key={faq.q}
-                className="group rounded-2xl border border-gray-200 bg-white transition-shadow hover:shadow-md [&[open]]:shadow-md"
-              >
-                <summary className="flex cursor-pointer items-center justify-between px-6 py-5 text-left font-semibold text-gray-900 [&::-webkit-details-marker]:hidden">
-                  {faq.q}
-                  <span className="ml-4 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-500 transition-transform group-open:rotate-45">
-                    +
-                  </span>
-                </summary>
-                <div className="px-6 pb-5 text-sm leading-relaxed text-gray-500">
-                  {faq.a}
-                </div>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Image Gallery Carousel */}
+      <ImageCarousel />
 
       {/* CTA Section */}
       <section className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-16 md:py-20">

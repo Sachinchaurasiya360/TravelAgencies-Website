@@ -107,10 +107,13 @@ export async function POST(request: NextRequest) {
       return errorResponse("Company settings not configured. Please configure settings first.", 400);
     }
 
-    // Calculate GST
+    // Calculate GST (only if booking has GST enabled)
     const subtotal = Number(booking.baseFare);
     const isInterState = data.isInterState ?? false;
-    const gst = calculateGst(subtotal, isInterState);
+    const includeGst = booking.includeGst;
+    const gst = includeGst
+      ? calculateGst(subtotal, isInterState)
+      : { subtotal, cgstRate: 0, sgstRate: 0, igstRate: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalTax: 0 };
 
     // Calculate grand total
     const tollCharges = Number(booking.tollCharges || 0);

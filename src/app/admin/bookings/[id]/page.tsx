@@ -40,6 +40,7 @@ interface BookingDetail {
   pickupTime: string | null;
   baseFare: string | null;
   taxAmount: string | null;
+  includeGst: boolean;
   tollCharges: string | null;
   driverAllowance: string | null;
   extraCharges: string | null;
@@ -70,6 +71,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     driverAllowance: "0",
     extraCharges: "0",
     discount: "0",
+    includeGst: false,
   });
   const [pricingLoading, setPricingLoading] = useState(false);
 
@@ -148,6 +150,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           driverAllowance: parseFloat(pricing.driverAllowance) || 0,
           extraCharges: parseFloat(pricing.extraCharges) || 0,
           discount: parseFloat(pricing.discount) || 0,
+          includeGst: pricing.includeGst,
         }),
       });
       const result = await res.json();
@@ -372,10 +375,12 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   <span className="text-muted-foreground">Base Fare</span>
                   <span>{formatCurrency(booking.baseFare)}</span>
                 </div>
+                {booking.includeGst && parseFloat(booking.taxAmount || "0") > 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">GST (5%)</span>
                   <span>{formatCurrency(booking.taxAmount)}</span>
                 </div>
+                )}
                 {parseFloat(booking.tollCharges || "0") > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Toll Charges</span>
@@ -473,6 +478,18 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                       className="mt-1"
                     />
                   </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="includeGst"
+                    checked={pricing.includeGst}
+                    onChange={(e) => setPricing({ ...pricing, includeGst: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 accent-orange-500"
+                  />
+                  <Label htmlFor="includeGst" className="text-sm font-normal cursor-pointer">
+                    Add GST (5%)
+                  </Label>
                 </div>
                 <div className="flex gap-2">
                   <Button type="submit" disabled={pricingLoading} size="sm">
