@@ -12,7 +12,6 @@ import {
   Phone,
   CheckCircle2,
   ArrowRight,
-  Star,
   Users,
   Headphones,
   IndianRupee,
@@ -21,6 +20,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/customer/image-carousel";
+import { Testimonials } from "@/components/customer/testimonials";
 
 export const metadata: Metadata = {
   title: "Sarthak Tour and Travels | Car & Bus Rental in Pune, Maharashtra",
@@ -133,30 +133,6 @@ const whyUs = [
     icon: Headphones,
     title: "24/7 Support",
     desc: "Round-the-clock assistance via call, SMS, and WhatsApp. We're always just a message away.",
-  },
-];
-
-const testimonials = [
-  {
-    name: "Priya Sharma",
-    location: "Pune",
-    trip: "Family Trip",
-    rating: 5,
-    text: "Booked a Tempo Traveller for our family trip to Mahabaleshwar. The driver was punctual, vehicle was spotless, and the whole experience was seamless. Highly recommend!",
-  },
-  {
-    name: "Rajesh Patel",
-    location: "Pune",
-    trip: "Corporate Event",
-    rating: 5,
-    text: "We've been using Sarthak Travels for all our corporate travel needs. Professional service, well-maintained fleet, and always on time. Best in Pune!",
-  },
-  {
-    name: "Anita Deshmukh",
-    location: "Nashik",
-    trip: "Pilgrimage",
-    rating: 5,
-    text: "Booked a bus for our Shirdi pilgrimage group. Everything was perfectly organized — comfortable seats, AC working great, and the driver knew all the routes well.",
   },
 ];
 
@@ -413,54 +389,7 @@ export default function HomePage() {
       </section>
 
       {/* Testimonials */}
-      <section className="px-4 py-16 md:py-24">
-        <div className="container mx-auto max-w-7xl">
-          <div className="text-center">
-            <span className="text-sm font-semibold uppercase tracking-widest text-orange-500">
-              What Travelers Say
-            </span>
-            <h2 className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Real Stories, Real Journeys
-            </h2>
-          </div>
-
-          <div className="mt-14 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {testimonials.map((t) => (
-              <div
-                key={t.name}
-                className="relative rounded-2xl border border-gray-100 bg-gray-50 p-8 transition-shadow hover:shadow-lg"
-              >
-                <span className="absolute right-6 top-4 select-none font-serif text-6xl leading-none text-orange-100">
-                  &ldquo;
-                </span>
-                <div className="mb-4 flex gap-1">
-                  {Array.from({ length: t.rating }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                    />
-                  ))}
-                </div>
-                <p className="text-sm leading-relaxed text-gray-600">{t.text}</p>
-                <div className="mt-6 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-600">
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900">
-                      {t.name}
-                    </div>
-                    <div className="text-xs text-gray-400">{t.location}</div>
-                  </div>
-                  <span className="ml-auto rounded-full bg-orange-50 px-2 py-1 text-xs font-medium text-orange-600">
-                    {t.trip}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <Testimonials />
 
       {/* Popular Routes */}
       <section className="bg-gray-50 px-4 py-16 md:py-24">
