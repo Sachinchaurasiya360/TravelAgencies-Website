@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PageHeader } from "@/components/shared/page-header";
 import { Building2, Receipt, Landmark, Bell, Save } from "lucide-react";
+import { useT } from "@/lib/i18n/language-context";
 
 interface Settings {
   // Company Info
@@ -61,6 +62,7 @@ const defaultSettings: Settings = {
 };
 
 export default function SettingsPage() {
+  const t = useT();
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -74,7 +76,7 @@ export default function SettingsPage() {
           setSettings({ ...defaultSettings, ...result.data });
         }
       } catch {
-        toast.error("Failed to fetch settings");
+        toast.error(t.settings.fetchFailed);
       } finally {
         setLoading(false);
       }
@@ -97,12 +99,12 @@ export default function SettingsPage() {
       });
       const result = await res.json();
       if (result.success) {
-        toast.success("Settings saved successfully");
+        toast.success(t.settings.settingsSaved);
       } else {
-        toast.error(result.error || "Failed to save settings");
+        toast.error(result.error || t.settings.saveFailed);
       }
     } catch {
-      toast.error("Failed to save settings");
+      toast.error(t.settings.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -113,8 +115,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Settings"
-        description="Manage your business configuration"
+        title={t.settings.title}
+        description={t.settings.subtitle}
       />
 
       <form onSubmit={handleSave} className="space-y-6">
@@ -123,13 +125,13 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Building2 className="h-5 w-5" />
-              Company Information
+              {t.settings.companyInfo}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="companyName">Company Name</Label>
+                <Label htmlFor="companyName">{t.settings.companyName}</Label>
                 <Input
                   id="companyName"
                   value={settings.companyName}
@@ -138,7 +140,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="companyEmail">Email</Label>
+                <Label htmlFor="companyEmail">{t.settings.companyEmail}</Label>
                 <Input
                   id="companyEmail"
                   type="email"
@@ -148,7 +150,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="companyPhone">Phone</Label>
+                <Label htmlFor="companyPhone">{t.settings.companyPhone}</Label>
                 <Input
                   id="companyPhone"
                   value={settings.companyPhone}
@@ -157,7 +159,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="companyWebsite">Website</Label>
+                <Label htmlFor="companyWebsite">{t.settings.companyWebsite}</Label>
                 <Input
                   id="companyWebsite"
                   value={settings.companyWebsite}
@@ -167,7 +169,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div>
-              <Label htmlFor="companyAddress">Address</Label>
+              <Label htmlFor="companyAddress">{t.settings.companyAddress}</Label>
               <Input
                 id="companyAddress"
                 value={settings.companyAddress}
@@ -183,23 +185,23 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Receipt className="h-5 w-5" />
-              GST Configuration
+              {t.settings.gstConfig}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="gstNumber">GST Number</Label>
+                <Label htmlFor="gstNumber">{t.settings.gstNumber}</Label>
                 <Input
                   id="gstNumber"
                   value={settings.gstNumber}
                   onChange={(e) => updateField("gstNumber", e.target.value)}
-                  placeholder="e.g., 27AAAAA0000A1Z5"
+                  placeholder={t.settings.gstNumberPlaceholder}
                   className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="gstRate">GST Rate (%)</Label>
+                <Label htmlFor="gstRate">{t.settings.gstRate}</Label>
                 <Input
                   id="gstRate"
                   type="number"
@@ -211,7 +213,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="sacCode">SAC Code</Label>
+                <Label htmlFor="sacCode">{t.settings.sacCode}</Label>
                 <Input
                   id="sacCode"
                   value={settings.sacCode}
@@ -220,12 +222,12 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="placeOfSupply">Place of Supply</Label>
+                <Label htmlFor="placeOfSupply">{t.settings.placeOfSupply}</Label>
                 <Input
                   id="placeOfSupply"
                   value={settings.placeOfSupply}
                   onChange={(e) => updateField("placeOfSupply", e.target.value)}
-                  placeholder="e.g., Maharashtra"
+                  placeholder={t.settings.placeOfSupplyPlaceholder}
                   className="mt-1"
                 />
               </div>
@@ -238,13 +240,13 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Landmark className="h-5 w-5" />
-              Bank Details
+              {t.settings.bankDetails}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="bankName">Bank Name</Label>
+                <Label htmlFor="bankName">{t.settings.bankName}</Label>
                 <Input
                   id="bankName"
                   value={settings.bankName}
@@ -253,7 +255,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="bankAccountHolder">Account Holder Name</Label>
+                <Label htmlFor="bankAccountHolder">{t.settings.accountHolderName}</Label>
                 <Input
                   id="bankAccountHolder"
                   value={settings.bankAccountHolder}
@@ -264,7 +266,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="bankAccountNumber">Account Number</Label>
+                <Label htmlFor="bankAccountNumber">{t.settings.accountNumber}</Label>
                 <Input
                   id="bankAccountNumber"
                   value={settings.bankAccountNumber}
@@ -275,7 +277,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="bankIfscCode">IFSC Code</Label>
+                <Label htmlFor="bankIfscCode">{t.settings.ifscCode}</Label>
                 <Input
                   id="bankIfscCode"
                   value={settings.bankIfscCode}
@@ -284,7 +286,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="bankBranch">Branch</Label>
+                <Label htmlFor="bankBranch">{t.settings.branch}</Label>
                 <Input
                   id="bankBranch"
                   value={settings.bankBranch}
@@ -301,15 +303,15 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Bell className="h-5 w-5" />
-              Notification Settings
+              {t.settings.notifications}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Email Notifications</p>
+                <p className="text-sm font-medium">{t.settings.emailNotifications}</p>
                 <p className="text-muted-foreground text-xs">
-                  Send notifications via email
+                  {t.settings.emailNotificationsDesc}
                 </p>
               </div>
               <Switch
@@ -322,24 +324,9 @@ export default function SettingsPage() {
             <Separator />
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">SMS Notifications</p>
+                <p className="text-sm font-medium">{t.settings.whatsappNotifications}</p>
                 <p className="text-muted-foreground text-xs">
-                  Send notifications via SMS
-                </p>
-              </div>
-              <Switch
-                checked={settings.smsNotifications}
-                onCheckedChange={(checked) =>
-                  updateField("smsNotifications", checked)
-                }
-              />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">WhatsApp Notifications</p>
-                <p className="text-muted-foreground text-xs">
-                  Send notifications via WhatsApp
+                  {t.settings.whatsappNotificationsDesc}
                 </p>
               </div>
               <Switch
@@ -352,9 +339,9 @@ export default function SettingsPage() {
             <Separator />
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Payment Reminders</p>
+                <p className="text-sm font-medium">{t.settings.paymentReminders}</p>
                 <p className="text-muted-foreground text-xs">
-                  Automatically send payment due reminders
+                  {t.settings.paymentRemindersDesc}
                 </p>
               </div>
               <Switch
@@ -367,9 +354,9 @@ export default function SettingsPage() {
             <Separator />
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Booking Confirmations</p>
+                <p className="text-sm font-medium">{t.settings.bookingConfirmations}</p>
                 <p className="text-muted-foreground text-xs">
-                  Send booking confirmation notifications to customers
+                  {t.settings.bookingConfirmationsDesc}
                 </p>
               </div>
               <Switch
@@ -386,7 +373,7 @@ export default function SettingsPage() {
         <div className="flex justify-end">
           <Button type="submit" disabled={saving} size="lg">
             <Save className="mr-2 h-4 w-4" />
-            {saving ? "Saving..." : "Save Settings"}
+            {saving ? t.common.saving : t.settings.saveSettings}
           </Button>
         </div>
       </form>

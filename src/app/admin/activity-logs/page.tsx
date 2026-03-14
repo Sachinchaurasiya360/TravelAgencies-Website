@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatDateTime } from "@/lib/helpers/date";
+import { useT } from "@/lib/i18n/language-context";
+import { interpolate } from "@/lib/i18n";
 import { ScrollText, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ActivityLog {
@@ -23,6 +25,7 @@ interface ActivityLog {
 }
 
 export default function ActivityLogsPage() {
+  const t = useT();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -46,7 +49,7 @@ export default function ActivityLogsPage() {
         setTotalPages(result.data.pagination.totalPages);
       }
     } catch {
-      toast.error("Failed to fetch activity logs");
+      toast.error(t.activityLogs.fetchFailed);
     } finally {
       setLoading(false);
     }
@@ -59,8 +62,8 @@ export default function ActivityLogsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Activity Logs"
-        description="Chronological log of all system activities"
+        title={t.activityLogs.title}
+        description={t.activityLogs.subtitle}
       />
 
       <Card>
@@ -70,8 +73,8 @@ export default function ActivityLogsPage() {
           ) : logs.length === 0 ? (
             <EmptyState
               icon={ScrollText}
-              title="No activity logs"
-              description="No activity has been recorded yet."
+              title={t.activityLogs.noLogsFound}
+              description={t.activityLogs.noLogsMatch}
             />
           ) : (
             <>
@@ -79,10 +82,10 @@ export default function ActivityLogsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-muted-foreground border-b text-left">
-                      <th className="p-4 font-medium">Timestamp</th>
-                      <th className="p-4 font-medium">User</th>
-                      <th className="p-4 font-medium">Action</th>
-                      <th className="p-4 font-medium">Description</th>
+                      <th className="p-4 font-medium">{t.activityLogs.timestamp}</th>
+                      <th className="p-4 font-medium">{t.activityLogs.user}</th>
+                      <th className="p-4 font-medium">{t.activityLogs.action}</th>
+                      <th className="p-4 font-medium">{t.activityLogs.description}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -96,7 +99,7 @@ export default function ActivityLogsPage() {
                         </td>
                         <td className="p-4">
                           <p className="font-medium">
-                            {log.user?.name || "System"}
+                            {log.user?.name || t.common.system}
                           </p>
                           {log.user?.email && (
                             <p className="text-muted-foreground text-xs">
@@ -121,7 +124,7 @@ export default function ActivityLogsPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between border-t p-4">
                 <p className="text-muted-foreground text-sm">
-                  Page {page} of {totalPages}
+                  {interpolate(t.common.pageOf, { page, total: totalPages })}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -131,7 +134,7 @@ export default function ActivityLogsPage() {
                     onClick={() => setPage(page - 1)}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Prev
+                    {t.common.prev}
                   </Button>
                   <Button
                     variant="outline"
@@ -139,7 +142,7 @@ export default function ActivityLogsPage() {
                     disabled={page >= totalPages}
                     onClick={() => setPage(page + 1)}
                   >
-                    Next
+                    {t.common.next}
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

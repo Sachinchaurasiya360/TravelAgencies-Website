@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import { successResponse, errorResponse, requireAdmin } from "@/lib/api-helpers";
 
 // GET /api/reports/summary - Dashboard summary for reports page
 export async function GET() {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {

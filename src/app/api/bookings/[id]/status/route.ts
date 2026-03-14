@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import { successResponse, errorResponse, requireAdmin } from "@/lib/api-helpers";
 import { updateBookingStatusSchema } from "@/validators/booking.validator";
 import { ALLOWED_STATUS_TRANSITIONS } from "@/lib/constants";
 import { BookingStatus, ActivityAction } from "@prisma/client";
@@ -12,7 +12,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   const { id } = await params;
@@ -38,13 +38,22 @@ export async function PATCH(
       );
     }
 
-    const updateData: Record<string, unknown> = { status: newStatus };
+    const updateData: {
+      status: BookingStatus;
+      confirmedAt?: Date;
+      cancelledAt?: Date;
+      cancellationReason?: string | null;
+      completedAt?: Date;
+    } = { status: newStatus as BookingStatus };
 
     switch (newStatus) {
-      case BookingStatus.CONFIRMED:
+      case "CONFIRMED":
         updateData.confirmedAt = new Date();
         break;
-      case BookingStatus.CANCELLED:
+      case "COMPLETED":
+        updateData.completedAt = new Date();
+        break;
+      case "CANCELLED":
         updateData.cancelledAt = new Date();
         updateData.cancellationReason = reason || null;
         break;
@@ -53,7 +62,10 @@ export async function PATCH(
     const updated = await prisma.booking.update({
       where: { id },
       data: updateData,
-      include: { customer: { select: { name: true, phone: true, email: true } } },
+      include: {
+        customer: { select: { name: true, phone: true, email: true } },
+        driver: { select: { name: true, phone: true } },
+      },
     });
 
     // Log activity (fire-and-forget)
@@ -66,17 +78,24 @@ export async function PATCH(
       metadata: { bookingId: updated.bookingId, oldStatus: booking.status, newStatus },
     }).catch(console.error);
 
-    // Send notification on status change (fire-and-forget)
-    sendStatusNotification(
+    // Send notification on status change (includes driver + pricing details)
+    const notifResults = await sendStatusNotification(
       {
         id: updated.id,
         bookingId: updated.bookingId,
         customer: updated.customer,
+        totalAmount: updated.totalAmount,
+        tollCharges: updated.tollCharges,
+        extraCharges: updated.extraCharges,
+        extraChargesNote: updated.extraChargesNote,
+        driver: updated.driver,
       },
       newStatus
-    ).catch(console.error);
+    ).catch(() => [] as { channel: string; whatsappUrl?: string }[]);
 
-    return successResponse(updated);
+    const waResult = notifResults?.find((r) => r.channel === "WHATSAPP" && r.whatsappUrl);
+
+    return successResponse({ ...updated, whatsappUrl: waResult?.whatsappUrl ?? null });
   } catch (error) {
     console.error("Status transition error:", error);
     return errorResponse("Failed to update booking status", 500);

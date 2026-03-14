@@ -17,6 +17,7 @@ import {
   IndianRupee,
   Filter,
 } from "lucide-react";
+import { useT } from "@/lib/i18n/language-context";
 
 interface PLData {
   income: {
@@ -36,6 +37,7 @@ interface PLData {
 }
 
 export default function ProfitLossPage() {
+  const t = useT();
   const [data, setData] = useState<PLData | null>(null);
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState("");
@@ -51,7 +53,7 @@ export default function ProfitLossPage() {
       const result = await res.json();
       if (result.success) setData(result.data);
     } catch {
-      toast.error("Failed to fetch P&L report");
+      toast.error(t.profitLoss.fetchFailed);
     } finally {
       setLoading(false);
     }
@@ -69,13 +71,13 @@ export default function ProfitLossPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Profit & Loss"
-        description="Income vs expenses analysis"
+        title={t.profitLoss.title}
+        description={t.profitLoss.subtitle}
       >
         <Button variant="outline" asChild>
           <Link href="/admin/reports">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+            {t.common.back}
           </Link>
         </Button>
       </PageHeader>
@@ -85,7 +87,7 @@ export default function ProfitLossPage() {
         <CardContent className="pt-6">
           <form onSubmit={handleFilter} className="flex flex-wrap items-end gap-4">
             <div>
-              <Label htmlFor="fromDate">From Date</Label>
+              <Label htmlFor="fromDate">{t.profitLoss.fromDate}</Label>
               <Input
                 id="fromDate"
                 type="date"
@@ -95,7 +97,7 @@ export default function ProfitLossPage() {
               />
             </div>
             <div>
-              <Label htmlFor="toDate">To Date</Label>
+              <Label htmlFor="toDate">{t.profitLoss.toDate}</Label>
               <Input
                 id="toDate"
                 type="date"
@@ -106,7 +108,7 @@ export default function ProfitLossPage() {
             </div>
             <Button type="submit" variant="outline">
               <Filter className="mr-2 h-4 w-4" />
-              Apply Filter
+              {t.profitLoss.applyFilter}
             </Button>
             {(fromDate || toDate) && (
               <Button
@@ -118,7 +120,7 @@ export default function ProfitLossPage() {
                   fetchData();
                 }}
               >
-                Clear
+                {t.common.clear}
               </Button>
             )}
           </form>
@@ -133,7 +135,7 @@ export default function ProfitLossPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Net Revenue</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.profitLoss.netRevenue}</CardTitle>
                 <TrendingUp className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
@@ -141,13 +143,13 @@ export default function ProfitLossPage() {
                   {formatCurrency(data.summary.netRevenue)}
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  Total income minus refunds
+                  {t.profitLoss.totalIncomeMinusRefunds}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Net After Tax</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.profitLoss.netAfterTax}</CardTitle>
                 <IndianRupee className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
@@ -155,7 +157,7 @@ export default function ProfitLossPage() {
                   {formatCurrency(data.summary.netRevenueAfterTax)}
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  After GST liability
+                  {t.profitLoss.afterGstLiability}
                 </p>
               </CardContent>
             </Card>
@@ -167,23 +169,23 @@ export default function ProfitLossPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg text-green-600">
                   <TrendingUp className="h-5 w-5" />
-                  Income
+                  {t.profitLoss.income}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Payments Received</span>
+                  <span className="text-muted-foreground">{t.profitLoss.paymentsReceived}</span>
                   <span className="font-medium">
                     {formatCurrency(data.income.totalPaymentsReceived)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Payment Count</span>
+                  <span className="text-muted-foreground">{t.profitLoss.paymentCount}</span>
                   <span className="font-medium">{data.income.paymentCount}</span>
                 </div>
                 {data.income.cancellationFeeIncome > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Cancellation Fees</span>
+                    <span className="text-muted-foreground">{t.profitLoss.cancellationFees}</span>
                     <span className="font-medium">
                       {formatCurrency(data.income.cancellationFeeIncome)}
                     </span>
@@ -196,22 +198,22 @@ export default function ProfitLossPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg text-red-600">
                   <TrendingDown className="h-5 w-5" />
-                  Expenses
+                  {t.profitLoss.expenses}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Refunds</span>
+                  <span className="text-muted-foreground">{t.profitLoss.totalRefunds}</span>
                   <span className="font-medium text-red-600">
                     {formatCurrency(data.expenses.totalRefunds)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Refund Count</span>
+                  <span className="text-muted-foreground">{t.profitLoss.refundCount}</span>
                   <span className="font-medium">{data.expenses.refundCount}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">GST Liability</span>
+                  <span className="text-muted-foreground">{t.profitLoss.gstLiability}</span>
                   <span className="font-medium text-red-600">
                     {formatCurrency(data.expenses.totalTaxLiability)}
                   </span>

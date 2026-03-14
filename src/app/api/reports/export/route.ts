@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma, BookingStatus, PaymentStatus } from "@prisma/client";
-import { requireAuth, errorResponse } from "@/lib/api-helpers";
+import { requireAdmin, errorResponse } from "@/lib/api-helpers";
 import {
   generateExcel,
   bookingsExportColumns,
@@ -10,7 +10,7 @@ import {
 
 // POST /api/reports/export - Export bookings or payments as Excel
 export async function POST(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {

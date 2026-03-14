@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { updateSettingsSchema } from "@/validators/settings.validator";
-import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import { successResponse, errorResponse, requireAdmin } from "@/lib/api-helpers";
 import { ActivityAction } from "@prisma/client";
 import { logActivity } from "@/services/activity-log.service";
 
 // GET /api/settings - Get application settings (admin only)
 export async function GET() {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {
@@ -31,15 +31,27 @@ export async function GET() {
 
 // PATCH /api/settings - Update application settings (admin only)
 export async function PATCH(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {
     const body = await request.json();
-    const parsed = updateSettingsSchema.safeParse(body);
+
+    // Strip null values — the DB returns nulls but Zod expects string | undefined
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (value !== null) cleaned[key] = value;
+    }
+
+    const parsed = updateSettingsSchema.safeParse(cleaned);
 
     if (!parsed.success) {
-      return errorResponse(parsed.error.issues[0].message, 400);
+      const issue = parsed.error.issues[0];
+      const field = issue.path.join(".");
+      return errorResponse(
+        field ? `${field}: ${issue.message}` : issue.message,
+        400
+      );
     }
 
     const data = parsed.data;

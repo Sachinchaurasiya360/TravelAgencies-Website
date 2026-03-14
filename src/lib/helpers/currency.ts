@@ -1,17 +1,18 @@
 export function formatCurrency(amount: number | { toNumber(): number } | string | null | undefined): string {
-  if (amount === null || amount === undefined) return "₹0.00";
+  if (amount === null || amount === undefined) return "₹0";
   const num = typeof amount === "string" ? parseFloat(amount) : Number(amount);
-  if (isNaN(num)) return "₹0.00";
+  if (isNaN(num)) return "₹0";
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(num));
 }
 
 export function amountToWords(amount: number): string {
-  if (amount === 0) return "Rupees Zero Only";
+  const rounded = Math.round(amount);
+  if (rounded === 0) return "Rupees Zero Only";
 
   const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
     "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen",
@@ -25,12 +26,7 @@ export function amountToWords(amount: number): string {
     return ones[Math.floor(n / 100)] + " Hundred" + (n % 100 ? " and " + convertLessThanThousand(n % 100) : "");
   }
 
-  const intPart = Math.floor(Math.abs(amount));
-  const paisePart = Math.round((Math.abs(amount) - intPart) * 100);
-
-  if (intPart === 0 && paisePart > 0) {
-    return `Rupees Zero and ${convertLessThanThousand(paisePart)} Paise Only`;
-  }
+  const intPart = Math.abs(rounded);
 
   let result = "";
   const crore = Math.floor(intPart / 10000000);
@@ -44,10 +40,6 @@ export function amountToWords(amount: number): string {
   if (remainder > 0) result += convertLessThanThousand(remainder);
 
   result = "Rupees " + result.trim();
-
-  if (paisePart > 0) {
-    result += ` and ${convertLessThanThousand(paisePart)} Paise`;
-  }
 
   return result + " Only";
 }

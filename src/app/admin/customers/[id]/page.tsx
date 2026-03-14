@@ -11,6 +11,9 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDate, formatDateTime } from "@/lib/helpers/date";
 import { ArrowLeft, User, Mail, Phone, CalendarCheck } from "lucide-react";
+import { useT } from "@/lib/i18n/language-context";
+import { interpolate } from "@/lib/i18n";
+import { getStatusLabel } from "@/lib/i18n/label-maps";
 
 interface CustomerBooking {
   id: string;
@@ -34,6 +37,7 @@ interface CustomerDetail {
 export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const t = useT();
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,11 +49,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         if (result.success) {
           setCustomer(result.data);
         } else {
-          toast.error("Customer not found");
+          toast.error(t.customers.notFound);
           router.push("/admin/customers");
         }
       } catch {
-        toast.error("Failed to fetch customer details");
+        toast.error(t.customers.detailFetchFailed);
       } finally {
         setLoading(false);
       }
@@ -72,7 +76,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         <div>
           <h1 className="text-2xl font-bold">{customer.name}</h1>
           <p className="text-muted-foreground text-sm">
-            Customer since {formatDate(customer.createdAt)}
+            {interpolate(t.customers.customerSince, { date: formatDate(customer.createdAt) })}
           </p>
         </div>
       </div>
@@ -82,7 +86,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <User className="h-5 w-5" />
-            Customer Information
+            {t.customers.customerInfo}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -90,22 +94,22 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             <div className="flex items-start gap-3">
               <User className="text-muted-foreground mt-0.5 h-4 w-4" />
               <div>
-                <p className="text-muted-foreground text-xs">Name</p>
+                <p className="text-muted-foreground text-xs">{t.customers.name}</p>
                 <p className="text-sm font-medium">{customer.name}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Phone className="text-muted-foreground mt-0.5 h-4 w-4" />
               <div>
-                <p className="text-muted-foreground text-xs">Phone</p>
+                <p className="text-muted-foreground text-xs">{t.customers.phone}</p>
                 <p className="text-sm font-medium">{customer.phone}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Mail className="text-muted-foreground mt-0.5 h-4 w-4" />
               <div>
-                <p className="text-muted-foreground text-xs">Email</p>
-                <p className="text-sm font-medium">{customer.email || "Not provided"}</p>
+                <p className="text-muted-foreground text-xs">{t.customers.email}</p>
+                <p className="text-sm font-medium">{customer.email || t.common.notProvided}</p>
               </div>
             </div>
           </div>
@@ -117,25 +121,25 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <CalendarCheck className="h-5 w-5" />
-            Booking History ({customer.bookings.length})
+            {interpolate(t.customers.bookingHistory, { count: customer.bookings.length })}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {customer.bookings.length === 0 ? (
             <div className="text-muted-foreground py-8 text-center text-sm">
-              No bookings yet.
+              {t.customers.noBookingsYet}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-muted-foreground border-b text-left">
-                    <th className="p-4 font-medium">Booking ID</th>
-                    <th className="p-4 font-medium">Travel Date</th>
-                    <th className="p-4 font-medium">Status</th>
-                    <th className="p-4 font-medium">Payment</th>
-                    <th className="p-4 font-medium">Amount</th>
-                    <th className="p-4 font-medium">Actions</th>
+                    <th className="p-4 font-medium">{t.customers.bookingId}</th>
+                    <th className="p-4 font-medium">{t.customers.travelDate}</th>
+                    <th className="p-4 font-medium">{t.customers.status}</th>
+                    <th className="p-4 font-medium">{t.customers.payment}</th>
+                    <th className="p-4 font-medium">{t.customers.amount}</th>
+                    <th className="p-4 font-medium">{t.common.actions}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -154,10 +158,10 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                       </td>
                       <td className="p-4">{formatDate(booking.travelDate)}</td>
                       <td className="p-4">
-                        <StatusBadge status={booking.status} />
+                        <StatusBadge status={booking.status} label={getStatusLabel(t, booking.status)} />
                       </td>
                       <td className="p-4">
-                        <StatusBadge status={booking.paymentStatus} />
+                        <StatusBadge status={booking.paymentStatus} label={getStatusLabel(t, booking.paymentStatus)} />
                       </td>
                       <td className="p-4 font-medium">
                         {booking.totalAmount
@@ -167,7 +171,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                       <td className="p-4">
                         <Button variant="outline" size="sm" asChild>
                           <Link href={`/admin/bookings/${booking.id}`}>
-                            View
+                            {t.common.view}
                           </Link>
                         </Button>
                       </td>

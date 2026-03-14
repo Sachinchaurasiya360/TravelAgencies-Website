@@ -1,17 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusBadge } from "@/components/shared/status-badge";
-import { formatCurrency } from "@/lib/helpers/currency";
-import { formatDate } from "@/lib/helpers/date";
-import {
-  CalendarCheck,
-  Clock,
-  IndianRupee,
-  TrendingUp,
-} from "lucide-react";
-import Link from "next/link";
+import { DashboardView } from "@/components/admin/dashboard-view";
 
 async function getDashboardData() {
   const today = new Date();
@@ -28,7 +18,7 @@ async function getDashboardData() {
     todayBookings,
     pendingCount,
     monthlyRevenue,
-    upcomingTrips,
+    upcomingTripsCount,
     recentBookings,
     totalBookings,
   ] = await Promise.all([
@@ -65,153 +55,21 @@ async function getDashboardData() {
     todayBookings,
     pendingCount,
     monthlyRevenue: monthlyRevenue._sum.totalAmount?.toString() || "0",
-    upcomingTrips,
-    recentBookings,
+    upcomingTrips: upcomingTripsCount,
     totalBookings,
+    recentBookings: recentBookings.map((b) => ({
+      id: b.id,
+      bookingId: b.bookingId,
+      status: b.status,
+      travelDate: b.travelDate.toISOString(),
+      totalAmount: b.totalAmount?.toString() ?? null,
+      customer: b.customer,
+    })),
   };
 }
 
 export default async function AdminDashboard() {
   const data = await getDashboardData();
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back! Here is your business overview.
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Today&apos;s Bookings
-            </CardTitle>
-            <CalendarCheck className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.todayBookings}</div>
-            <p className="text-muted-foreground text-xs">
-              {data.totalBookings} total bookings
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Pending Approvals
-            </CardTitle>
-            <Clock className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {data.pendingCount}
-            </div>
-            <p className="text-muted-foreground text-xs">
-              Awaiting your review
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Monthly Revenue
-            </CardTitle>
-            <IndianRupee className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(data.monthlyRevenue)}
-            </div>
-            <p className="text-muted-foreground text-xs">This month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Upcoming Trips
-            </CardTitle>
-            <TrendingUp className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.upcomingTrips}</div>
-            <p className="text-muted-foreground text-xs">Next 7 days</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Bookings */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Recent Bookings</CardTitle>
-          <Link
-            href="/admin/bookings"
-            className="text-sm text-blue-600 hover:underline"
-          >
-            View all
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {data.recentBookings.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              No bookings yet.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-muted-foreground border-b text-left">
-                    <th className="pb-3 font-medium">Booking ID</th>
-                    <th className="pb-3 font-medium">Customer</th>
-                    <th className="pb-3 font-medium">Travel Date</th>
-                    <th className="pb-3 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.recentBookings.map((booking) => (
-                    <tr key={booking.id} className="border-b last:border-0">
-                      <td className="py-3">
-                        <Link
-                          href={`/admin/bookings/${booking.id}`}
-                          className="font-medium text-blue-600 hover:underline"
-                        >
-                          {booking.bookingId}
-                        </Link>
-                      </td>
-                      <td className="py-3">
-                        <div>
-                          <p className="font-medium">{booking.customer.name}</p>
-                          <p className="text-muted-foreground text-xs">
-                            {booking.customer.phone}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="py-3">
-                        {formatDate(booking.travelDate)}
-                      </td>
-                      <td className="py-3">
-                        <StatusBadge status={booking.status} />
-                      </td>
-                      <td className="py-3 font-medium">
-                        {booking.totalAmount
-                          ? formatCurrency(booking.totalAmount)
-                          : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+  return <DashboardView data={data} />;
 }

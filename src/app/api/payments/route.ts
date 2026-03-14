@@ -2,19 +2,24 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma, PaymentStatus, ActivityAction } from "@prisma/client";
 import { recordPaymentSchema } from "@/validators/payment.validator";
-import { generateReceiptNumber } from "@/lib/helpers/booking-id";
 import {
   successResponse,
   errorResponse,
+  requireAdmin,
   requireAuth,
   getPaginationParams,
   paginationMeta,
+  safeSortField,
+  validEnumOrUndefined,
 } from "@/lib/api-helpers";
 import { logActivity } from "@/services/activity-log.service";
 
+const PAYMENT_SORT_FIELDS = ["createdAt", "paymentDate", "amount", "receiptNumber"];
+const VALID_PAYMENT_METHODS = ["CASH", "ONLINE"];
+
 // GET /api/payments - List all payments (admin only)
 export async function GET(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {
@@ -32,7 +37,8 @@ export async function GET(request: NextRequest) {
 
     if (bookingId) where.bookingId = bookingId;
     if (customerId) where.customerId = customerId;
-    if (method) where.method = method as Prisma.EnumPaymentMethodFilter;
+    const validMethod = validEnumOrUndefined(method, VALID_PAYMENT_METHODS);
+    if (validMethod) where.method = validMethod as Prisma.EnumPaymentMethodFilter;
 
     if (search) {
       where.OR = [
@@ -57,7 +63,7 @@ export async function GET(request: NextRequest) {
           customer: { select: { id: true, name: true, phone: true } },
           invoice: { select: { id: true, invoiceNumber: true } },
         },
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: { [safeSortField(sortBy, PAYMENT_SORT_FIELDS)]: sortOrder },
         skip,
         take: limit,
       }),
@@ -74,7 +80,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/payments - Record a payment (admin only)
+// POST /api/payments - Record a payment (admin + driver)
 export async function POST(request: NextRequest) {
   const session = await requireAuth();
   if (!session) return errorResponse("Unauthorized", 401);
@@ -89,13 +95,19 @@ export async function POST(request: NextRequest) {
 
     const data = parsed.data;
 
-    // Fetch booking
+    // Validate booking exists (outside transaction for early validation)
     const booking = await prisma.booking.findUnique({
       where: { id: data.bookingId },
       include: { customer: true },
     });
 
     if (!booking) return errorResponse("Booking not found", 404);
+
+    // Driver can only record payments on their own bookings
+    const role = (session.user as { role: string }).role;
+    if (role === "DRIVER" && booking.driverId !== session.user.id) {
+      return errorResponse("Access denied", 403);
+    }
 
     // Validate invoice if provided
     if (data.invoiceId) {
@@ -108,23 +120,94 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate receipt number
-    const receiptNumber = await generateReceiptNumber();
+    // Wrap payment creation + all status updates in a transaction
+    const payment = await prisma.$transaction(async (tx) => {
+      // Generate receipt number atomically inside transaction
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const prefix = `RCT-${today}-`;
+      const lastPayment = await tx.payment.findFirst({
+        where: { receiptNumber: { startsWith: prefix } },
+        orderBy: { receiptNumber: "desc" },
+        select: { receiptNumber: true },
+      });
+      let seq = 1;
+      if (lastPayment) {
+        seq = parseInt(lastPayment.receiptNumber.split("-").pop() || "0", 10) + 1;
+      }
+      const receiptNumber = `${prefix}${seq.toString().padStart(4, "0")}`;
 
-    // Create payment
-    const payment = await prisma.payment.create({
-      data: {
-        receiptNumber,
-        bookingId: data.bookingId,
-        customerId: booking.customerId,
-        invoiceId: data.invoiceId || null,
-        amount: data.amount,
-        method: data.method,
-        isAdvance: data.isAdvance ?? false,
-        transactionRef: data.transactionRef || null,
-        paymentDate: data.paymentDate || new Date(),
-        notes: data.notes || null,
-      },
+      // Create payment
+      const newPayment = await tx.payment.create({
+        data: {
+          receiptNumber,
+          bookingId: data.bookingId,
+          customerId: booking.customerId,
+          invoiceId: data.invoiceId || null,
+          amount: data.amount,
+          method: data.method,
+          isAdvance: data.isAdvance ?? false,
+          transactionRef: data.transactionRef || null,
+          paymentDate: data.paymentDate || new Date(),
+          notes: data.notes || null,
+        },
+      });
+
+      // Aggregate total paid for booking
+      const totalPaidResult = await tx.payment.aggregate({
+        where: { bookingId: data.bookingId },
+        _sum: { amount: true },
+      });
+
+      const totalPaid = Number(totalPaidResult._sum.amount || 0);
+      const totalAmount = Number(booking.totalAmount || 0);
+
+      let newPaymentStatus: PaymentStatus;
+      if (totalAmount <= 0 || totalPaid >= totalAmount) {
+        newPaymentStatus = PaymentStatus.PAID;
+      } else if (totalPaid > 0) {
+        newPaymentStatus = PaymentStatus.PARTIAL;
+      } else {
+        newPaymentStatus = PaymentStatus.PENDING;
+      }
+
+      await tx.booking.update({
+        where: { id: data.bookingId },
+        data: {
+          paymentStatus: newPaymentStatus,
+          ...(data.isAdvance
+            ? { advanceAmount: data.amount, advancePaidAt: new Date() }
+            : {}),
+        },
+      });
+
+      // Update invoice amounts if invoiceId provided
+      if (data.invoiceId) {
+        const [invoicePaidResult, invoice] = await Promise.all([
+          tx.payment.aggregate({
+            where: { invoiceId: data.invoiceId },
+            _sum: { amount: true },
+          }),
+          tx.invoice.findUnique({
+            where: { id: data.invoiceId },
+            select: { grandTotal: true },
+          }),
+        ]);
+
+        const invoicePaid = Number(invoicePaidResult._sum.amount || 0);
+        const invoiceTotal = Number(invoice?.grandTotal || 0);
+        const balanceDue = Math.max(0, invoiceTotal - invoicePaid);
+
+        await tx.invoice.update({
+          where: { id: data.invoiceId },
+          data: {
+            amountPaid: Math.round(invoicePaid),
+            balanceDue: Math.round(balanceDue),
+            status: balanceDue <= 0 ? "PAID" : invoicePaid > 0 ? "PARTIALLY_PAID" : undefined,
+          },
+        });
+      }
+
+      return newPayment;
     });
 
     logActivity({
@@ -135,63 +218,6 @@ export async function POST(request: NextRequest) {
       entityId: payment.id,
       metadata: { receiptNumber: payment.receiptNumber, bookingId: booking.bookingId, amount: data.amount },
     }).catch(console.error);
-
-    // Update booking payment status based on total paid vs totalAmount
-    const totalPaidResult = await prisma.payment.aggregate({
-      where: { bookingId: data.bookingId },
-      _sum: { amount: true },
-    });
-
-    const totalPaid = Number(totalPaidResult._sum.amount || 0);
-    const totalAmount = Number(booking.totalAmount || 0);
-
-    let newPaymentStatus: PaymentStatus;
-    if (totalAmount <= 0) {
-      newPaymentStatus = PaymentStatus.PAID;
-    } else if (totalPaid >= totalAmount) {
-      newPaymentStatus = PaymentStatus.PAID;
-    } else if (totalPaid > 0) {
-      newPaymentStatus = PaymentStatus.PARTIAL;
-    } else {
-      newPaymentStatus = PaymentStatus.PENDING;
-    }
-
-    await prisma.booking.update({
-      where: { id: data.bookingId },
-      data: {
-        paymentStatus: newPaymentStatus,
-        ...(data.isAdvance
-          ? { advanceAmount: data.amount, advancePaidAt: new Date() }
-          : {}),
-      },
-    });
-
-    // Update invoice amounts if invoiceId provided
-    if (data.invoiceId) {
-      const invoicePaidResult = await prisma.payment.aggregate({
-        where: { invoiceId: data.invoiceId },
-        _sum: { amount: true },
-      });
-
-      const invoicePaid = Number(invoicePaidResult._sum.amount || 0);
-
-      const invoice = await prisma.invoice.findUnique({
-        where: { id: data.invoiceId },
-        select: { grandTotal: true },
-      });
-
-      const invoiceTotal = Number(invoice?.grandTotal || 0);
-      const balanceDue = Math.max(0, invoiceTotal - invoicePaid);
-
-      await prisma.invoice.update({
-        where: { id: data.invoiceId },
-        data: {
-          amountPaid: invoicePaid,
-          balanceDue: Math.round(balanceDue * 100) / 100,
-          status: balanceDue <= 0 ? "PAID" : invoicePaid > 0 ? "PARTIALLY_PAID" : undefined,
-        },
-      });
-    }
 
     return successResponse(payment, 201);
   } catch (error) {

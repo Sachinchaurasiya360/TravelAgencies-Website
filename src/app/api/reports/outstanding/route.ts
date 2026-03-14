@@ -3,28 +3,34 @@ import { prisma } from "@/lib/prisma";
 import {
   successResponse,
   errorResponse,
-  requireAuth,
+  requireAdmin,
   getPaginationParams,
   paginationMeta,
 } from "@/lib/api-helpers";
 
 // GET /api/reports/outstanding - Outstanding dues report (admin only)
 export async function GET(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {
     const searchParams = request.nextUrl.searchParams;
     const { page, limit, skip } = getPaginationParams(searchParams);
 
-    // Find bookings with outstanding payments (PENDING, PARTIAL, or OVERDUE)
+    // Find bookings with outstanding payments
     const where = {
       paymentStatus: { in: ["PENDING" as const, "PARTIAL" as const, "OVERDUE" as const] },
       totalAmount: { not: null },
       status: { notIn: ["CANCELLED" as const] },
     };
 
-    const [bookings, total] = await Promise.all([
+    const overdueWhere = {
+      ...where,
+      paymentDueDate: { lt: new Date() },
+    };
+
+    // Run paginated list + global summary aggregates in parallel
+    const [bookings, total, globalTotalAgg, globalPaidAgg, overdueCount, overdueTotalAgg, overduePaidAgg] = await Promise.all([
       prisma.booking.findMany({
         where,
         include: {
@@ -39,9 +45,23 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.booking.count({ where }),
+      // Global totals (across ALL pages, not just current page)
+      prisma.booking.aggregate({ where, _sum: { totalAmount: true } }),
+      prisma.payment.aggregate({ where: { booking: where }, _sum: { amount: true } }),
+      // Overdue subset
+      prisma.booking.count({ where: overdueWhere }),
+      prisma.booking.aggregate({ where: overdueWhere, _sum: { totalAmount: true } }),
+      prisma.payment.aggregate({ where: { booking: overdueWhere }, _sum: { amount: true } }),
     ]);
 
-    // Calculate outstanding for each booking
+    const totalOutstanding = Math.max(0,
+      Number(globalTotalAgg._sum.totalAmount || 0) - Number(globalPaidAgg._sum.amount || 0)
+    );
+    const overdueAmount = Math.max(0,
+      Number(overdueTotalAgg._sum.totalAmount || 0) - Number(overduePaidAgg._sum.amount || 0)
+    );
+
+    // Per-row calculations for current page
     const outstandingBookings = bookings.map((booking) => {
       const totalPaid = booking.payments.reduce(
         (sum, p) => sum + Number(p.amount),
@@ -66,22 +86,12 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Summary aggregates
-    const totalOutstanding = outstandingBookings.reduce(
-      (sum, b) => sum + b.outstanding,
-      0
-    );
-    const overdueCount = outstandingBookings.filter((b) => b.isOverdue).length;
-    const overdueAmount = outstandingBookings
-      .filter((b) => b.isOverdue)
-      .reduce((sum, b) => sum + b.outstanding, 0);
-
     return successResponse({
       summary: {
-        totalOutstanding: Math.round(totalOutstanding * 100) / 100,
+        totalOutstanding: Math.round(totalOutstanding),
         totalBookings: total,
         overdueCount,
-        overdueAmount: Math.round(overdueAmount * 100) / 100,
+        overdueAmount: Math.round(overdueAmount),
       },
       bookings: outstandingBookings,
       pagination: paginationMeta(total, page, limit),

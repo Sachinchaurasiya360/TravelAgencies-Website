@@ -4,14 +4,14 @@ import { Prisma, ActivityAction } from "@prisma/client";
 import {
   successResponse,
   errorResponse,
-  requireAuth,
+  requireAdmin,
   getPaginationParams,
   paginationMeta,
 } from "@/lib/api-helpers";
 
 // GET /api/activity-logs - List activity logs (admin only)
 export async function GET(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {

@@ -6,7 +6,7 @@ import { calculateBookingTotal } from "@/lib/helpers/gst";
 import { ActivityAction } from "@prisma/client";
 import { logActivity } from "@/services/activity-log.service";
 
-// PATCH /api/bookings/[id]/assign-pricing - Set pricing on booking
+// PATCH /api/bookings/[id]/assign-pricing - Set pricing on booking (admin + driver)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -27,9 +27,16 @@ export async function PATCH(
     const booking = await prisma.booking.findUnique({ where: { id } });
     if (!booking) return errorResponse("Booking not found", 404);
 
+    // Driver can only update pricing on their own bookings
+    const role = (session.user as { role: string }).role;
+    if (role === "DRIVER" && booking.driverId !== session.user.id) {
+      return errorResponse("Access denied", 403);
+    }
+
     const totals = calculateBookingTotal({
       baseFare: parsed.data.baseFare,
       tollCharges: parsed.data.tollCharges,
+      parkingCharges: parsed.data.parkingCharges,
       driverAllowance: parsed.data.driverAllowance,
       extraCharges: parsed.data.extraCharges,
       discount: parsed.data.discount,
@@ -42,6 +49,7 @@ export async function PATCH(
         baseFare: totals.baseFare,
         taxAmount: totals.taxAmount,
         tollCharges: totals.tollCharges,
+        parkingCharges: totals.parkingCharges,
         driverAllowance: totals.driverAllowance,
         extraCharges: totals.extraCharges,
         extraChargesNote: parsed.data.extraChargesNote || null,

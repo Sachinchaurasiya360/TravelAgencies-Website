@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import { successResponse, errorResponse, requireAdmin } from "@/lib/api-helpers";
 
 // GET /api/reports/profit-loss - Profit & Loss report (admin only)
 export async function GET(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {
@@ -80,8 +80,8 @@ export async function GET(request: NextRequest) {
         totalTaxLiability: totalTaxCollected,
       },
       summary: {
-        netRevenue: Math.round(netRevenue * 100) / 100,
-        netRevenueAfterTax: Math.round(netRevenueAfterTax * 100) / 100,
+        netRevenue: Math.round(netRevenue),
+        netRevenueAfterTax: Math.round(netRevenueAfterTax),
       },
       filters: {
         fromDate: fromDate || null,

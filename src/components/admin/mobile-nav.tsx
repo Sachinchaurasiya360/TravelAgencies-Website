@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/language-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -18,23 +19,28 @@ import {
   Activity,
   Settings,
   Bus,
+  UserCheck,
+  Wallet,
 } from "lucide-react";
-
-const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/bookings", label: "Bookings", icon: CalendarCheck },
-  { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/invoices", label: "Invoices", icon: FileText },
-  { href: "/admin/payments", label: "Payments", icon: CreditCard },
-  { href: "/admin/reports", label: "Reports", icon: BarChart3 },
-  { href: "/admin/reminders", label: "Reminders", icon: Bell },
-  { href: "/admin/activity-logs", label: "Activity Logs", icon: Activity },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
-];
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const t = useT();
+
+  const navItems = [
+    { href: "/admin", label: t.nav.dashboard, icon: LayoutDashboard },
+    { href: "/admin/bookings", label: t.nav.bookings, icon: CalendarCheck },
+    { href: "/admin/customers", label: t.nav.customers, icon: Users },
+    { href: "/admin/drivers", label: t.nav.drivers, icon: UserCheck },
+    { href: "/admin/invoices", label: t.nav.invoices, icon: FileText },
+    { href: "/admin/payments", label: t.nav.payments, icon: CreditCard },
+    { href: "/admin/expenses", label: t.nav.expenses, icon: Wallet },
+    { href: "/admin/reports", label: t.nav.reports, icon: BarChart3 },
+    { href: "/admin/reminders", label: t.nav.reminders, icon: Bell },
+    { href: "/admin/activity-logs", label: t.nav.activityLogs, icon: Activity },
+    { href: "/admin/settings", label: t.nav.settings, icon: Settings },
+  ];
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -46,7 +52,7 @@ export function MobileNav() {
       <SheetContent side="left" className="w-[280px] p-0">
         <div className="flex h-16 items-center gap-2 border-b px-6">
           <Bus className="h-6 w-6 text-blue-600" />
-          <span className="text-lg font-bold">Sarthak Travels</span>
+          <span className="text-lg font-bold">{t.nav.companyName}</span>
         </div>
         <nav className="space-y-1 p-3">
           {navItems.map((item) => {

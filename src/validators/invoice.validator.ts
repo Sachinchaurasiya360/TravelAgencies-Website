@@ -10,3 +10,8 @@ export const createInvoiceSchema = z.object({
 });
 
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
+
+export const signInvoiceSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  signatureData: z.string().min(1, "Signature is required"),
+});

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import { successResponse, errorResponse, requireAdmin } from "@/lib/api-helpers";
 import { ActivityAction } from "@prisma/client";
 import { logActivity } from "@/services/activity-log.service";
 
@@ -9,7 +9,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   const { id } = await params;
@@ -19,7 +19,11 @@ export async function GET(
       where: { id },
       include: {
         customer: true,
-        invoices: { orderBy: { createdAt: "desc" } },
+        driver: { select: { id: true, name: true, phone: true } },
+        invoices: {
+          select: { id: true, invoiceNumber: true, status: true, grandTotal: true, shareToken: true, signedAt: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+        },
         payments: { orderBy: { createdAt: "desc" } },
         refunds: { orderBy: { createdAt: "desc" } },
         notes: {
@@ -44,7 +48,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   const { id } = await params;

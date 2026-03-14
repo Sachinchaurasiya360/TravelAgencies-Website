@@ -18,7 +18,10 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDate } from "@/lib/helpers/date";
-import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
+import { PAYMENT_METHODS } from "@/lib/constants";
+import { useT } from "@/lib/i18n/language-context";
+import { interpolate } from "@/lib/i18n";
+import { getPaymentMethodLabel } from "@/lib/i18n/label-maps";
 import {
   Search,
   IndianRupee,
@@ -45,6 +48,7 @@ interface Payment {
 }
 
 export default function PaymentsPage() {
+  const t = useT();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -75,9 +79,9 @@ export default function PaymentsPage() {
       a.download = `payments-${new Date().toISOString().split("T")[0]}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Export downloaded");
+      toast.success(t.payments.exportDownloaded);
     } catch {
-      toast.error("Failed to export payments");
+      toast.error(t.payments.exportFailed);
     } finally {
       setExporting(false);
     }
@@ -104,7 +108,7 @@ export default function PaymentsPage() {
         setTotalPages(result.data.pagination.totalPages);
       }
     } catch {
-      toast.error("Failed to fetch payments");
+      toast.error(t.payments.fetchFailed);
     } finally {
       setLoading(false);
     }
@@ -116,14 +120,14 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
-          title="Payments"
-          description="Track all payment transactions"
+          title={t.payments.title}
+          description={t.payments.subtitle}
         />
-        <Button variant="outline" onClick={handleExport} disabled={exporting}>
+        <Button variant="outline" onClick={handleExport} disabled={exporting} className="w-full sm:w-auto">
           <Download className="mr-2 h-4 w-4" />
-          {exporting ? "Exporting..." : "Export Excel"}
+          {exporting ? t.common.exporting : t.payments.exportExcel}
         </Button>
       </div>
 
@@ -134,7 +138,7 @@ export default function PaymentsPage() {
             <div className="relative flex-1">
               <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
               <Input
-                placeholder="Search by receipt number, customer name..."
+                placeholder={t.payments.searchPlaceholder}
                 className="pl-9"
                 value={search}
                 onChange={(e) => {
@@ -151,13 +155,13 @@ export default function PaymentsPage() {
               }}
             >
               <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="All Methods" />
+                <SelectValue placeholder={t.payments.allMethods} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Methods</SelectItem>
-                {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                <SelectItem value="all">{t.payments.allMethods}</SelectItem>
+                {PAYMENT_METHODS.map((value) => (
                   <SelectItem key={value} value={value}>
-                    {label}
+                    {getPaymentMethodLabel(t, value)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -170,12 +174,12 @@ export default function PaymentsPage() {
               }}
             >
               <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="All Types" />
+                <SelectValue placeholder={t.payments.allTypes} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="true">Advance</SelectItem>
-                <SelectItem value="false">Regular</SelectItem>
+                <SelectItem value="all">{t.payments.allTypes}</SelectItem>
+                <SelectItem value="true">{t.payments.advanceType}</SelectItem>
+                <SelectItem value="false">{t.payments.regularType}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -190,8 +194,8 @@ export default function PaymentsPage() {
           ) : payments.length === 0 ? (
             <EmptyState
               icon={IndianRupee}
-              title="No payments found"
-              description="No payments match your search criteria."
+              title={t.payments.noPaymentsFound}
+              description={t.payments.noPaymentsMatch}
             />
           ) : (
             <>
@@ -199,12 +203,12 @@ export default function PaymentsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-muted-foreground border-b text-left">
-                      <th className="p-4 font-medium">Receipt #</th>
-                      <th className="p-4 font-medium">Customer</th>
-                      <th className="p-4 font-medium">Amount</th>
-                      <th className="p-4 font-medium">Method</th>
-                      <th className="p-4 font-medium">Type</th>
-                      <th className="p-4 font-medium">Date</th>
+                      <th className="p-4 font-medium">{t.payments.receiptNumber}</th>
+                      <th className="p-4 font-medium">{t.payments.customer}</th>
+                      <th className="p-4 font-medium">{t.payments.amount}</th>
+                      <th className="p-4 font-medium">{t.payments.method}</th>
+                      <th className="p-4 font-medium">{t.payments.type}</th>
+                      <th className="p-4 font-medium">{t.payments.date}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -238,7 +242,7 @@ export default function PaymentsPage() {
                           {formatCurrency(payment.amount)}
                         </td>
                         <td className="p-4">
-                          {PAYMENT_METHOD_LABELS[payment.method] || payment.method}
+                          {getPaymentMethodLabel(t, payment.method)}
                         </td>
                         <td className="p-4">
                           <span
@@ -248,7 +252,7 @@ export default function PaymentsPage() {
                                 : "bg-gray-100 text-gray-800"
                             }`}
                           >
-                            {payment.isAdvance ? "Advance" : "Regular"}
+                            {payment.isAdvance ? t.payments.advanceType : t.payments.regularType}
                           </span>
                         </td>
                         <td className="p-4">
@@ -263,7 +267,7 @@ export default function PaymentsPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between border-t p-4">
                 <p className="text-muted-foreground text-sm">
-                  Page {page} of {totalPages}
+                  {interpolate(t.common.pageOf, { page, total: totalPages })}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -273,7 +277,7 @@ export default function PaymentsPage() {
                     onClick={() => setPage(page - 1)}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Prev
+                    {t.common.prev}
                   </Button>
                   <Button
                     variant="outline"
@@ -281,7 +285,7 @@ export default function PaymentsPage() {
                     disabled={page >= totalPages}
                     onClick={() => setPage(page + 1)}
                   >
-                    Next
+                    {t.common.next}
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

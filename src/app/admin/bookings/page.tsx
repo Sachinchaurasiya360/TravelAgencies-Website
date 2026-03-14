@@ -18,10 +18,10 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDate } from "@/lib/helpers/date";
-import {
-  BOOKING_STATUS_LABELS,
-  PAYMENT_STATUS_LABELS,
-} from "@/lib/constants";
+import { BOOKING_STATUSES } from "@/lib/constants";
+import { useT } from "@/lib/i18n/language-context";
+import { interpolate } from "@/lib/i18n";
+import { getStatusLabel } from "@/lib/i18n/label-maps";
 import { Search, CalendarCheck, ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 interface Booking {
@@ -35,6 +35,7 @@ interface Booking {
 }
 
 export default function BookingsPage() {
+  const t = useT();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -65,9 +66,9 @@ export default function BookingsPage() {
       a.download = `bookings-${new Date().toISOString().split("T")[0]}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Export downloaded");
+      toast.success(t.bookings.exportDownloaded);
     } catch {
-      toast.error("Failed to export bookings");
+      toast.error(t.bookings.exportFailed);
     } finally {
       setExporting(false);
     }
@@ -93,7 +94,7 @@ export default function BookingsPage() {
         setTotalPages(result.data.pagination.totalPages);
       }
     } catch {
-      toast.error("Failed to fetch bookings");
+      toast.error(t.bookings.fetchFailed);
     } finally {
       setLoading(false);
     }
@@ -105,14 +106,14 @@ export default function BookingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Bookings</h1>
-          <p className="text-muted-foreground">Manage all booking requests</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t.bookings.title}</h1>
+          <p className="text-muted-foreground">{t.bookings.subtitle}</p>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={exporting}>
+        <Button variant="outline" onClick={handleExport} disabled={exporting} className="w-full sm:w-auto">
           <Download className="mr-2 h-4 w-4" />
-          {exporting ? "Exporting..." : "Export Excel"}
+          {exporting ? t.common.exporting : t.bookings.exportExcel}
         </Button>
       </div>
 
@@ -123,7 +124,7 @@ export default function BookingsPage() {
             <div className="relative flex-1">
               <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
               <Input
-                placeholder="Search by booking ID, customer name, or phone..."
+                placeholder={t.bookings.searchPlaceholder}
                 className="pl-9"
                 value={search}
                 onChange={(e) => {
@@ -140,13 +141,13 @@ export default function BookingsPage() {
               }}
             >
               <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="All Statuses" />
+                <SelectValue placeholder={t.bookings.allStatuses} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                {Object.entries(BOOKING_STATUS_LABELS).map(([value, label]) => (
+                <SelectItem value="all">{t.bookings.allStatuses}</SelectItem>
+                {BOOKING_STATUSES.map((value) => (
                   <SelectItem key={value} value={value}>
-                    {label}
+                    {getStatusLabel(t, value)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -163,22 +164,56 @@ export default function BookingsPage() {
           ) : bookings.length === 0 ? (
             <EmptyState
               icon={CalendarCheck}
-              title="No bookings found"
-              description="No bookings match your search criteria."
+              title={t.bookings.noBookingsFound}
+              description={t.bookings.noBookingsMatch}
             />
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              {/* Mobile card view */}
+              <div className="divide-y divide-gray-100 sm:hidden">
+                {bookings.map((booking) => (
+                  <Link
+                    key={booking.id}
+                    href={`/admin/bookings/${booking.id}`}
+                    className="block px-4 py-3 transition-colors hover:bg-gray-50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-blue-600">
+                          #{booking.bookingId}
+                        </span>
+                        <StatusBadge status={booking.status} label={getStatusLabel(t, booking.status)} />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {booking.totalAmount
+                          ? formatCurrency(booking.totalAmount)
+                          : "-"}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between">
+                      <p className="text-sm text-gray-600 truncate">
+                        {booking.customer.name}
+                      </p>
+                      <p className="text-xs text-gray-400 shrink-0 ml-2">
+                        {formatDate(booking.travelDate)}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              {/* Desktop table view */}
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="w-full min-w-[700px] text-sm">
                   <thead>
                     <tr className="text-muted-foreground border-b text-left">
-                      <th className="p-4 font-medium">Booking ID</th>
-                      <th className="p-4 font-medium">Customer</th>
-                      <th className="p-4 font-medium">Travel Date</th>
-                      <th className="p-4 font-medium">Status</th>
-                      <th className="p-4 font-medium">Payment</th>
-                      <th className="p-4 font-medium">Amount</th>
-                      <th className="p-4 font-medium">Actions</th>
+                      <th className="p-4 font-medium">{t.bookings.bookingId}</th>
+                      <th className="p-4 font-medium">{t.bookings.customer}</th>
+                      <th className="p-4 font-medium">{t.bookings.travelDate}</th>
+                      <th className="p-4 font-medium">{t.bookings.status}</th>
+                      <th className="p-4 font-medium">{t.bookings.payment}</th>
+                      <th className="p-4 font-medium">{t.bookings.amount}</th>
+                      <th className="p-4 font-medium">{t.common.actions}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -207,10 +242,10 @@ export default function BookingsPage() {
                           {formatDate(booking.travelDate)}
                         </td>
                         <td className="p-4">
-                          <StatusBadge status={booking.status} />
+                          <StatusBadge status={booking.status} label={getStatusLabel(t, booking.status)} />
                         </td>
                         <td className="p-4">
-                          <StatusBadge status={booking.paymentStatus} />
+                          <StatusBadge status={booking.paymentStatus} label={getStatusLabel(t, booking.paymentStatus)} />
                         </td>
                         <td className="p-4 font-medium">
                           {booking.totalAmount
@@ -220,7 +255,7 @@ export default function BookingsPage() {
                         <td className="p-4">
                           <Button variant="outline" size="sm" asChild>
                             <Link href={`/admin/bookings/${booking.id}`}>
-                              View
+                              {t.common.view}
                             </Link>
                           </Button>
                         </td>
@@ -233,7 +268,7 @@ export default function BookingsPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between border-t p-4">
                 <p className="text-muted-foreground text-sm">
-                  Page {page} of {totalPages}
+                  {interpolate(t.common.pageOf, { page, total: totalPages })}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -243,7 +278,7 @@ export default function BookingsPage() {
                     onClick={() => setPage(page - 1)}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Prev
+                    {t.common.prev}
                   </Button>
                   <Button
                     variant="outline"
@@ -251,7 +286,7 @@ export default function BookingsPage() {
                     disabled={page >= totalPages}
                     onClick={() => setPage(page + 1)}
                   >
-                    Next
+                    {t.common.next}
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

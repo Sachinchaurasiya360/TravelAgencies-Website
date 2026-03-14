@@ -30,8 +30,10 @@ interface InvoiceData {
   igstAmount: number | string;
   totalTax: number | string;
   tollCharges: number | string;
+  parkingCharges: number | string;
   driverAllowance: number | string;
   extraCharges: number | string;
+  extraChargesNote?: string | null;
   discount: number | string;
   grandTotal: number | string;
   amountInWords: string | null;
@@ -44,6 +46,9 @@ interface InvoiceData {
   bankIfscCode?: string | null;
   bankAccountName?: string | null;
   upiId?: string | null;
+  estimatedDistance?: number | string | null;
+  signatureData?: string | null;
+  signedAt?: Date | string | null;
 }
 
 export function generateInvoiceHtml(data: InvoiceData): string {
@@ -81,9 +86,8 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     <div>
       <div class="company-name">${data.companyName}</div>
       <div>${data.companyAddress}</div>
-      <div>GSTIN: ${data.companyGstin}</div>
-      <div>Phone: ${data.companyPhone} | Email: ${data.companyEmail}</div>
-      <div>State: ${data.companyState} (${data.companyStateCode})</div>
+      ${data.companyPhone || data.companyEmail ? `<div>${[data.companyPhone ? `Phone: ${data.companyPhone}` : "", data.companyEmail ? `Email: ${data.companyEmail}` : ""].filter(Boolean).join(" | ")}</div>` : ""}
+      ${data.companyState ? `<div>State: ${data.companyState}${data.companyStateCode ? ` (${data.companyStateCode})` : ""}</div>` : ""}
     </div>
     <div style="text-align: right;">
       <div class="invoice-title">TAX INVOICE</div>
@@ -102,13 +106,9 @@ export function generateInvoiceHtml(data: InvoiceData): string {
       ${data.customerEmail ? `<div>Email: ${data.customerEmail}</div>` : ""}
       ${data.customerGstin ? `<div>GSTIN: ${data.customerGstin}</div>` : ""}
     </div>
-    <div class="details-box">
-      <h3>Supply Details</h3>
-      <div>Place of Supply: ${data.companyState}</div>
-      <div>Supply Type: ${data.isInterState ? "Inter-State" : "Intra-State"}</div>
-      <div>Reverse Charge: No</div>
-    </div>
   </div>
+
+  ${Number(data.estimatedDistance || 0) > 0 ? `<div style="margin-bottom: 15px; padding: 8px 12px; background: #f8f9fa; border-radius: 4px;"><strong>Total Distance:</strong> ${Number(data.estimatedDistance).toLocaleString("en-IN")} km</div>` : ""}
 
   <table>
     <thead>
@@ -152,9 +152,10 @@ export function generateInvoiceHtml(data: InvoiceData): string {
         <td class="amount-right">${formatCurrency(data.igstAmount)}</td>
       </tr>`
       }
-      ${Number(data.tollCharges) > 0 ? `<tr><td>Toll Charges</td><td class="amount-right">${formatCurrency(data.tollCharges)}</td></tr>` : ""}
+      ${Number(data.tollCharges) > 0 ? `<tr><td>FastTag / Toll</td><td class="amount-right">${formatCurrency(data.tollCharges)}</td></tr>` : ""}
+      ${Number(data.parkingCharges) > 0 ? `<tr><td>Parking Charges</td><td class="amount-right">${formatCurrency(data.parkingCharges)}</td></tr>` : ""}
       ${Number(data.driverAllowance) > 0 ? `<tr><td>Driver Allowance</td><td class="amount-right">${formatCurrency(data.driverAllowance)}</td></tr>` : ""}
-      ${Number(data.extraCharges) > 0 ? `<tr><td>Extra Charges</td><td class="amount-right">${formatCurrency(data.extraCharges)}</td></tr>` : ""}
+      ${Number(data.extraCharges) > 0 ? `<tr><td>${data.extraChargesNote || "Other Charges"}</td><td class="amount-right">${formatCurrency(data.extraCharges)}</td></tr>` : ""}
       ${Number(data.discount) > 0 ? `<tr><td>Discount</td><td class="amount-right">-${formatCurrency(data.discount)}</td></tr>` : ""}
       <tr class="total-row grand-total">
         <td><strong>Grand Total</strong></td>
@@ -189,9 +190,20 @@ export function generateInvoiceHtml(data: InvoiceData): string {
 
   ${data.termsAndConditions ? `<div class="footer"><strong>Terms & Conditions:</strong><br>${data.termsAndConditions}</div>` : ""}
 
-  <div class="footer">
-    <p>This is a computer-generated invoice and does not require a signature.</p>
+  <div style="display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px;">
+    <div style="text-align: center; width: 45%;">
+      ${data.signatureData && data.signatureData.startsWith("data:image/") ? `<img src="${data.signatureData.replace(/"/g, "&quot;")}" alt="Customer Signature" style="max-width: 200px; max-height: 80px; margin-bottom: 8px;" />` : `<div style="height: 80px; border-bottom: 1px solid #333; margin-bottom: 8px;"></div>`}
+      <div style="font-size: 11px; color: #666;">Customer Signature</div>
+      ${data.signedAt ? `<div style="font-size: 10px; color: #10b981; margin-top: 2px;">Signed on ${new Date(data.signedAt).toLocaleDateString("en-IN")}</div>` : ""}
+    </div>
+    <div style="text-align: center; width: 45%;">
+      <div style="height: 80px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 8px;">
+        <div style="font-size: 16px; font-weight: bold; color: #2563eb; font-style: italic; border-bottom: 1px solid #333; padding-bottom: 4px; padding-left: 10px; padding-right: 10px;">${data.companyName}</div>
+      </div>
+      <div style="font-size: 11px; color: #666;">Authorized Signatory</div>
+    </div>
   </div>
+
   <script>window.onload = function() { window.print(); }</script>
 </body>
 </html>`;

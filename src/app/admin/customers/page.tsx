@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PageHeader } from "@/components/shared/page-header";
+import { useT } from "@/lib/i18n/language-context";
+import { interpolate } from "@/lib/i18n";
 import { Search, Users, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Customer {
@@ -20,6 +22,7 @@ interface Customer {
 }
 
 export default function CustomersPage() {
+  const t = useT();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -45,7 +48,7 @@ export default function CustomersPage() {
         setTotalPages(result.data.pagination.totalPages);
       }
     } catch {
-      toast.error("Failed to fetch customers");
+      toast.error(t.customers.fetchFailed);
     } finally {
       setLoading(false);
     }
@@ -58,8 +61,8 @@ export default function CustomersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Customers"
-        description="Manage your customer database"
+        title={t.customers.title}
+        description={t.customers.subtitle}
       />
 
       {/* Search */}
@@ -68,7 +71,7 @@ export default function CustomersPage() {
           <div className="relative">
             <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
             <Input
-              placeholder="Search by name, phone, or email..."
+              placeholder={t.customers.searchPlaceholder}
               className="pl-9"
               value={search}
               onChange={(e) => {
@@ -88,8 +91,8 @@ export default function CustomersPage() {
           ) : customers.length === 0 ? (
             <EmptyState
               icon={Users}
-              title="No customers found"
-              description="No customers match your search criteria."
+              title={t.customers.noCustomersFound}
+              description={t.customers.noCustomersMatch}
             />
           ) : (
             <>
@@ -97,11 +100,11 @@ export default function CustomersPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-muted-foreground border-b text-left">
-                      <th className="p-4 font-medium">Name</th>
-                      <th className="p-4 font-medium">Phone</th>
-                      <th className="p-4 font-medium">Email</th>
-                      <th className="p-4 font-medium">Total Bookings</th>
-                      <th className="p-4 font-medium">Actions</th>
+                      <th className="p-4 font-medium">{t.customers.name}</th>
+                      <th className="p-4 font-medium">{t.customers.phone}</th>
+                      <th className="p-4 font-medium">{t.customers.email}</th>
+                      <th className="p-4 font-medium">{t.customers.totalBookings}</th>
+                      <th className="p-4 font-medium">{t.common.actions}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -126,7 +129,7 @@ export default function CustomersPage() {
                         <td className="p-4">
                           <Button variant="outline" size="sm" asChild>
                             <Link href={`/admin/customers/${customer.id}`}>
-                              View
+                              {t.common.view}
                             </Link>
                           </Button>
                         </td>
@@ -139,7 +142,7 @@ export default function CustomersPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between border-t p-4">
                 <p className="text-muted-foreground text-sm">
-                  Page {page} of {totalPages}
+                  {interpolate(t.common.pageOf, { page, total: totalPages })}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -149,7 +152,7 @@ export default function CustomersPage() {
                     onClick={() => setPage(page - 1)}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Prev
+                    {t.common.prev}
                   </Button>
                   <Button
                     variant="outline"
@@ -157,7 +160,7 @@ export default function CustomersPage() {
                     disabled={page >= totalPages}
                     onClick={() => setPage(page + 1)}
                   >
-                    Next
+                    {t.common.next}
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

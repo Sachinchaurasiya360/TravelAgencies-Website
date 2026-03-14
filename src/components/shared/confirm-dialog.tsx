@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n/language-context";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface ConfirmDialogProps {
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  loadingLabel?: string;
   variant?: "default" | "destructive";
   onConfirm: () => void;
   loading?: boolean;
@@ -28,13 +30,16 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
+  loadingLabel,
   variant = "default",
   onConfirm,
   loading = false,
   children,
 }: ConfirmDialogProps) {
+  const t = useT();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -49,14 +54,14 @@ export function ConfirmDialog({
             onClick={() => onOpenChange(false)}
             disabled={loading}
           >
-            {cancelLabel}
+            {cancelLabel || t.confirmDialog.cancel}
           </Button>
           <Button
             variant={variant === "destructive" ? "destructive" : "default"}
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? "Processing..." : confirmLabel}
+            {loading ? (loadingLabel || t.confirmDialog.processing) : (confirmLabel || t.confirmDialog.confirm)}
           </Button>
         </DialogFooter>
       </DialogContent>

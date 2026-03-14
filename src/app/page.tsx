@@ -18,6 +18,7 @@ import {
   Navigation,
   Plane,
   MessageCircle,
+  LogIn,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/customer/image-carousel";
 import { Testimonials } from "@/components/customer/testimonials";
@@ -192,10 +193,20 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-gray-600 text-gray-200 hover:bg-white/5 hover:text-white"
+                  className="border-orange-500 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
                   asChild
                 >
                   <Link href="/track">Track Booking</Link>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-white/20 text-gray-300 hover:bg-white/5 hover:text-white"
+                  asChild
+                >
+                  <Link href="/admin/login">
+                    <LogIn className="mr-2 h-4 w-4" /> Admin Login
+                  </Link>
                 </Button>
               </div>
               <div className="mt-8 flex items-center gap-6 text-sm text-gray-400">

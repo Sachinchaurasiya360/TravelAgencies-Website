@@ -14,39 +14,48 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
-      include: {
-        booking: {
-          select: {
-            bookingId: true,
-            tripType: true,
-            vehicleType: true,
-            travelDate: true,
-            returnDate: true,
-            pickupLocation: true,
-            dropLocation: true,
-            passengerCount: true,
+    // Parallelize invoice + settings queries (independent)
+    const [invoice, settings] = await Promise.all([
+      prisma.invoice.findUnique({
+        where: { id },
+        include: {
+          booking: {
+            select: {
+              bookingId: true,
+              tripType: true,
+              vehicleType: true,
+              travelDate: true,
+              returnDate: true,
+              pickupLocation: true,
+              dropLocation: true,
+              passengerCount: true,
+              estimatedDistance: true,
+              driverId: true,
+            },
           },
+          customer: true,
+          payments: { orderBy: { paymentDate: "desc" } },
         },
-        customer: true,
-        payments: { orderBy: { paymentDate: "desc" } },
-      },
-    });
+      }),
+      prisma.settings.findUnique({
+        where: { id: "app_settings" },
+        select: {
+          bankName: true,
+          bankAccountNumber: true,
+          bankIfscCode: true,
+          bankAccountName: true,
+          upiId: true,
+        },
+      }),
+    ]);
 
     if (!invoice) return errorResponse("Invoice not found", 404);
 
-    // Fetch bank details from settings
-    const settings = await prisma.settings.findUnique({
-      where: { id: "app_settings" },
-      select: {
-        bankName: true,
-        bankAccountNumber: true,
-        bankIfscCode: true,
-        bankAccountName: true,
-        upiId: true,
-      },
-    });
+    // Driver can only view PDF for their own bookings
+    const role = (session.user as { role: string }).role;
+    if (role === "DRIVER" && invoice.booking.driverId !== session.user.id) {
+      return errorResponse("Access denied", 403);
+    }
 
     const html = generateInvoiceHtml({
       invoiceNumber: invoice.invoiceNumber,
@@ -75,8 +84,10 @@ export async function GET(
       igstAmount: invoice.igstAmount.toString(),
       totalTax: invoice.totalTax.toString(),
       tollCharges: invoice.tollCharges.toString(),
+      parkingCharges: invoice.parkingCharges.toString(),
       driverAllowance: invoice.driverAllowance.toString(),
       extraCharges: invoice.extraCharges.toString(),
+      extraChargesNote: invoice.extraChargesNote,
       discount: invoice.discount.toString(),
       grandTotal: invoice.grandTotal.toString(),
       amountInWords: invoice.amountInWords,
@@ -89,6 +100,9 @@ export async function GET(
       bankIfscCode: settings?.bankIfscCode,
       bankAccountName: settings?.bankAccountName,
       upiId: settings?.upiId,
+      estimatedDistance: invoice.booking.estimatedDistance,
+      signatureData: invoice.signatureData,
+      signedAt: invoice.signedAt,
     });
 
     return new Response(html, {

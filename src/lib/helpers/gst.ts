@@ -13,7 +13,7 @@ export interface GstCalculation {
 
 export function calculateGst(subtotal: number, isInterState: boolean): GstCalculation {
   if (isInterState) {
-    const igstAmount = Math.round((subtotal * IGST_RATE) / 100 * 100) / 100;
+    const igstAmount = Math.round((subtotal * IGST_RATE) / 100);
     return {
       subtotal,
       cgstRate: 0,
@@ -26,8 +26,8 @@ export function calculateGst(subtotal: number, isInterState: boolean): GstCalcul
     };
   }
 
-  const cgstAmount = Math.round((subtotal * CGST_RATE) / 100 * 100) / 100;
-  const sgstAmount = Math.round((subtotal * SGST_RATE) / 100 * 100) / 100;
+  const cgstAmount = Math.round((subtotal * CGST_RATE) / 100);
+  const sgstAmount = Math.round((subtotal * SGST_RATE) / 100);
 
   return {
     subtotal,
@@ -44,6 +44,7 @@ export function calculateGst(subtotal: number, isInterState: boolean): GstCalcul
 export function calculateBookingTotal(params: {
   baseFare: number;
   tollCharges?: number;
+  parkingCharges?: number;
   driverAllowance?: number;
   extraCharges?: number;
   discount?: number;
@@ -53,25 +54,27 @@ export function calculateBookingTotal(params: {
   baseFare: number;
   taxAmount: number;
   tollCharges: number;
+  parkingCharges: number;
   driverAllowance: number;
   extraCharges: number;
   discount: number;
   totalAmount: number;
 } {
-  const { baseFare, tollCharges = 0, driverAllowance = 0, extraCharges = 0, discount = 0 } = params;
+  const { baseFare, tollCharges = 0, parkingCharges = 0, driverAllowance = 0, extraCharges = 0, discount = 0 } = params;
   const includeGst = params.includeGst ?? true;
   const taxAmount = includeGst
     ? calculateGst(baseFare, params.isInterState ?? false).totalTax
     : 0;
-  const totalAmount = baseFare + taxAmount + tollCharges + driverAllowance + extraCharges - discount;
+  const totalAmount = baseFare + taxAmount + tollCharges + parkingCharges + driverAllowance + extraCharges - discount;
 
   return {
     baseFare,
     taxAmount,
     tollCharges,
+    parkingCharges,
     driverAllowance,
     extraCharges,
     discount,
-    totalAmount: Math.round(totalAmount * 100) / 100,
+    totalAmount: Math.round(totalAmount),
   };
 }

@@ -18,6 +18,9 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDate } from "@/lib/helpers/date";
+import { useT } from "@/lib/i18n/language-context";
+import { interpolate } from "@/lib/i18n";
+import { getStatusLabel } from "@/lib/i18n/label-maps";
 import { RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Refund {
@@ -38,6 +41,7 @@ interface Refund {
 }
 
 export default function RefundsPage() {
+  const t = useT();
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -63,7 +67,7 @@ export default function RefundsPage() {
         setTotalPages(result.data.pagination.totalPages);
       }
     } catch {
-      toast.error("Failed to fetch refunds");
+      toast.error(t.refunds.fetchFailed);
     } finally {
       setLoading(false);
     }
@@ -76,8 +80,8 @@ export default function RefundsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Refunds"
-        description="Track refund requests and processing"
+        title={t.refunds.title}
+        description={t.refunds.subtitle}
       />
 
       {/* Filters */}
@@ -92,13 +96,13 @@ export default function RefundsPage() {
               }}
             >
               <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="All Statuses" />
+                <SelectValue placeholder={t.refunds.allStatuses} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="REQUESTED">Requested</SelectItem>
-                <SelectItem value="PROCESSED">Processed</SelectItem>
-                <SelectItem value="REJECTED">Rejected</SelectItem>
+                <SelectItem value="all">{t.refunds.allStatuses}</SelectItem>
+                <SelectItem value="REQUESTED">{t.status.requested}</SelectItem>
+                <SelectItem value="PROCESSED">{t.status.processed}</SelectItem>
+                <SelectItem value="REJECTED">{t.status.rejected}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -113,8 +117,8 @@ export default function RefundsPage() {
           ) : refunds.length === 0 ? (
             <EmptyState
               icon={RotateCcw}
-              title="No refunds found"
-              description="No refunds match your filter criteria."
+              title={t.refunds.noRefundsFound}
+              description={t.refunds.noRefundsMatch}
             />
           ) : (
             <>
@@ -122,12 +126,12 @@ export default function RefundsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-muted-foreground border-b text-left">
-                      <th className="p-4 font-medium">Refund #</th>
-                      <th className="p-4 font-medium">Customer</th>
-                      <th className="p-4 font-medium">Booking ID</th>
-                      <th className="p-4 font-medium">Requested Amount</th>
-                      <th className="p-4 font-medium">Status</th>
-                      <th className="p-4 font-medium">Date</th>
+                      <th className="p-4 font-medium">{t.refunds.refundNumber}</th>
+                      <th className="p-4 font-medium">{t.refunds.customer}</th>
+                      <th className="p-4 font-medium">{t.refunds.bookingId}</th>
+                      <th className="p-4 font-medium">{t.refunds.requestedAmount}</th>
+                      <th className="p-4 font-medium">{t.refunds.status}</th>
+                      <th className="p-4 font-medium">{t.refunds.date}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -159,7 +163,7 @@ export default function RefundsPage() {
                           {formatCurrency(refund.amount)}
                         </td>
                         <td className="p-4">
-                          <StatusBadge status={refund.status} />
+                          <StatusBadge status={refund.status} label={getStatusLabel(t, refund.status)} />
                         </td>
                         <td className="p-4">
                           {formatDate(refund.createdAt)}
@@ -173,7 +177,7 @@ export default function RefundsPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between border-t p-4">
                 <p className="text-muted-foreground text-sm">
-                  Page {page} of {totalPages}
+                  {interpolate(t.common.pageOf, { page, total: totalPages })}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -183,7 +187,7 @@ export default function RefundsPage() {
                     onClick={() => setPage(page - 1)}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Prev
+                    {t.common.prev}
                   </Button>
                   <Button
                     variant="outline"
@@ -191,7 +195,7 @@ export default function RefundsPage() {
                     disabled={page >= totalPages}
                     onClick={() => setPage(page + 1)}
                   >
-                    Next
+                    {t.common.next}
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

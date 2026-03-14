@@ -6,7 +6,7 @@ import { generateRefundNumber } from "@/lib/helpers/booking-id";
 import {
   successResponse,
   errorResponse,
-  requireAuth,
+  requireAdmin,
   getPaginationParams,
   paginationMeta,
 } from "@/lib/api-helpers";
@@ -14,7 +14,7 @@ import { logActivity } from "@/services/activity-log.service";
 
 // GET /api/refunds - List all refunds (admin only)
 export async function GET(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/refunds - Create a refund request (admin only)
 export async function POST(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {

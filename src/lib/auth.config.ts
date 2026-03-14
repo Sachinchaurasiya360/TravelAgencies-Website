@@ -25,18 +25,40 @@ export const authConfig = {
     },
     async authorized({ auth, request }) {
       const isLoggedIn = !!auth?.user;
-      const isOnAdmin = request.nextUrl.pathname.startsWith("/admin");
-      const isOnLoginPage = request.nextUrl.pathname === "/admin/login";
+      const { pathname } = request.nextUrl;
+      const role = (auth?.user as { role?: string } | undefined)?.role;
 
+      const isOnLoginPage = pathname === "/admin/login";
+      const isOnAdmin = pathname.startsWith("/admin");
+      const isOnDriver = pathname.startsWith("/driver");
+
+      // Login page: redirect logged-in users to their portal
       if (isOnLoginPage) {
         if (isLoggedIn) {
+          if (role === "DRIVER") {
+            return Response.redirect(new URL("/driver", request.nextUrl));
+          }
           return Response.redirect(new URL("/admin", request.nextUrl));
         }
         return true;
       }
 
+      // Admin routes: require ADMIN or SUPER_ADMIN
       if (isOnAdmin) {
-        return isLoggedIn;
+        if (!isLoggedIn) return false;
+        if (role === "DRIVER") {
+          return Response.redirect(new URL("/driver", request.nextUrl));
+        }
+        return true;
+      }
+
+      // Driver routes: require DRIVER role
+      if (isOnDriver) {
+        if (!isLoggedIn) return false;
+        if (role !== "DRIVER") {
+          return Response.redirect(new URL("/admin", request.nextUrl));
+        }
+        return true;
       }
 
       return true;

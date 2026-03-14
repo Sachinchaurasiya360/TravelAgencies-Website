@@ -5,16 +5,22 @@ import { generateBookingId } from "@/lib/helpers/booking-id";
 import {
   successResponse,
   errorResponse,
-  requireAuth,
+  requireAdmin,
   getClientIp,
   getPaginationParams,
   paginationMeta,
+  safeSortField,
+  validEnumOrUndefined,
 } from "@/lib/api-helpers";
 import { publicBookingLimit } from "@/lib/rate-limit";
 import { BookingStatus, Prisma, ActivityAction } from "@prisma/client";
 
 import { sendBookingConfirmation } from "@/services/notification.service";
 import { logActivity } from "@/services/activity-log.service";
+
+const BOOKING_SORT_FIELDS = ["createdAt", "travelDate", "bookingId", "totalAmount", "paymentStatus"];
+const VALID_BOOKING_STATUSES = ["PENDING", "CONFIRMED", "CANCELLED"];
+const VALID_PAYMENT_STATUSES = ["PENDING", "PARTIAL", "PAID", "OVERDUE"];
 
 // POST /api/bookings - Create new booking (public)
 export async function POST(request: NextRequest) {
@@ -38,47 +44,35 @@ export async function POST(request: NextRequest) {
     // Clean phone number (remove +91 prefix if present)
     const cleanPhone = data.phone.replace(/^\+91/, "");
 
-    // Find or create customer
-    let customer = await prisma.customer.findUnique({
+    // Use upsert to atomically find-or-create customer (prevents race condition)
+    const customer = await prisma.customer.upsert({
       where: { phone: cleanPhone },
-    });
-
-    if (!customer) {
-      customer = await prisma.customer.create({
-        data: {
-          name: data.name,
-          phone: cleanPhone,
-          email: data.email || null,
-        },
-      });
-
-      logActivity({
-        action: ActivityAction.CUSTOMER_CREATED,
-        description: `New customer created: ${customer.name} (${customer.phone})`,
-        userId: undefined,
-        entityType: "Customer",
-        entityId: customer.id,
-        metadata: { customerName: customer.name, customerPhone: customer.phone },
-      }).catch(console.error);
-    }
-
-    // Generate booking ID
-    const bookingId = await generateBookingId();
-
-    // Create booking
-    const booking = await prisma.booking.create({
-      data: {
-        bookingId,
-        customerId: customer.id,
-        travelDate: new Date(data.travelDate),
-        pickupLocation: data.pickupLocation,
-        dropLocation: data.dropLocation,
-        pickupTime: data.pickupTime || null,
-        status: BookingStatus.PENDING,
+      update: {},
+      create: {
+        name: data.name,
+        phone: cleanPhone,
+        email: data.email || null,
       },
     });
 
-    // Log activity (fire-and-forget)
+    // Wrap booking ID generation + creation in a transaction
+    const booking = await prisma.$transaction(async (tx) => {
+      const bookingId = await generateBookingId(tx);
+
+      return tx.booking.create({
+        data: {
+          bookingId,
+          customerId: customer.id,
+          travelDate: new Date(data.travelDate),
+          pickupLocation: data.pickupLocation,
+          dropLocation: data.dropLocation,
+          pickupTime: data.pickupTime || null,
+          status: BookingStatus.PENDING,
+        },
+      });
+    });
+
+    // Fire-and-forget logging and notifications
     logActivity({
       action: ActivityAction.BOOKING_CREATED,
       description: `Booking ${booking.bookingId} created for ${customer.name}`,
@@ -88,7 +82,6 @@ export async function POST(request: NextRequest) {
       metadata: { bookingId: booking.bookingId },
     }).catch(console.error);
 
-    // Send confirmation notification (fire-and-forget)
     sendBookingConfirmation({
       id: booking.id,
       bookingId: booking.bookingId,
@@ -113,7 +106,7 @@ export async function POST(request: NextRequest) {
 
 // GET /api/bookings - List all bookings (admin only)
 export async function GET(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) {
     return errorResponse("Unauthorized", 401);
   }
@@ -122,15 +115,15 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const { page, limit, skip, sortBy, sortOrder } = getPaginationParams(searchParams);
 
-    const status = searchParams.get("status") as BookingStatus | null;
-    const paymentStatus = searchParams.get("paymentStatus");
+    const status = validEnumOrUndefined(searchParams.get("status"), VALID_BOOKING_STATUSES);
+    const paymentStatus = validEnumOrUndefined(searchParams.get("paymentStatus"), VALID_PAYMENT_STATUSES);
     const search = searchParams.get("search");
     const fromDate = searchParams.get("fromDate");
     const toDate = searchParams.get("toDate");
 
     const where: Prisma.BookingWhereInput = {};
 
-    if (status) where.status = status;
+    if (status) where.status = status as BookingStatus;
     if (paymentStatus) where.paymentStatus = paymentStatus as Prisma.EnumPaymentStatusFilter;
 
     if (search) {
@@ -152,8 +145,9 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           customer: { select: { id: true, name: true, phone: true, email: true } },
+          driver: { select: { id: true, name: true } },
         },
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: { [safeSortField(sortBy, BOOKING_SORT_FIELDS)]: sortOrder },
         skip,
         take: limit,
       }),

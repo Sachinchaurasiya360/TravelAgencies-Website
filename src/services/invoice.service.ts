@@ -87,9 +87,9 @@ export async function createInvoice(params: CreateInvoiceParams) {
       driverAllowance,
       extraCharges,
       discount,
-      grandTotal: Math.round(grandTotal * 100) / 100,
-      amountInWords: amountToWords(Math.round(grandTotal * 100) / 100),
-      balanceDue: Math.round(grandTotal * 100) / 100,
+      grandTotal: Math.round(grandTotal),
+      amountInWords: amountToWords(Math.round(grandTotal)),
+      balanceDue: Math.round(grandTotal),
       isInterState,
 
       dueDate: params.dueDate || defaultDueDate,

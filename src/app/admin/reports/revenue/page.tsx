@@ -11,6 +11,7 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { ArrowLeft, IndianRupee, Receipt, Car, Filter } from "lucide-react";
+import { useT } from "@/lib/i18n/language-context";
 
 interface RevenueSummary {
   totalRevenue: string | number;
@@ -34,6 +35,7 @@ interface RevenueData {
 }
 
 export default function RevenueReportPage() {
+  const t = useT();
   const [data, setData] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState("");
@@ -49,7 +51,7 @@ export default function RevenueReportPage() {
       const result = await res.json();
       if (result.success) setData(result.data);
     } catch {
-      toast.error("Failed to fetch revenue report");
+      toast.error(t.revenueReport.fetchFailed);
     } finally {
       setLoading(false);
     }
@@ -67,13 +69,13 @@ export default function RevenueReportPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Revenue Report"
-        description="Monthly and yearly revenue breakdown"
+        title={t.revenueReport.title}
+        description={t.revenueReport.subtitle}
       >
         <Button variant="outline" asChild>
           <Link href="/admin/reports">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+            {t.common.back}
           </Link>
         </Button>
       </PageHeader>
@@ -83,7 +85,7 @@ export default function RevenueReportPage() {
         <CardContent className="pt-6">
           <form onSubmit={handleFilter} className="flex flex-wrap items-end gap-4">
             <div>
-              <Label htmlFor="fromDate">From Date</Label>
+              <Label htmlFor="fromDate">{t.revenueReport.fromDate}</Label>
               <Input
                 id="fromDate"
                 type="date"
@@ -93,7 +95,7 @@ export default function RevenueReportPage() {
               />
             </div>
             <div>
-              <Label htmlFor="toDate">To Date</Label>
+              <Label htmlFor="toDate">{t.revenueReport.toDate}</Label>
               <Input
                 id="toDate"
                 type="date"
@@ -104,7 +106,7 @@ export default function RevenueReportPage() {
             </div>
             <Button type="submit" variant="outline">
               <Filter className="mr-2 h-4 w-4" />
-              Apply Filter
+              {t.revenueReport.applyFilter}
             </Button>
             {(fromDate || toDate) && (
               <Button
@@ -116,7 +118,7 @@ export default function RevenueReportPage() {
                   fetchData();
                 }}
               >
-                Clear
+                {t.common.clear}
               </Button>
             )}
           </form>
@@ -131,7 +133,7 @@ export default function RevenueReportPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.revenueReport.totalRevenue}</CardTitle>
                 <IndianRupee className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
@@ -139,14 +141,14 @@ export default function RevenueReportPage() {
                   {formatCurrency(data.summary.totalRevenue)}
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  {data.summary.totalPaymentsCount} payments received
+                  {data.summary.totalPaymentsCount} {t.revenueReport.paymentsReceived}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Booking Value</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.revenueReport.bookingValue}</CardTitle>
                 <Receipt className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
@@ -154,34 +156,34 @@ export default function RevenueReportPage() {
                   {formatCurrency(data.summary.totalBookingValue)}
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  {data.summary.bookingCount} confirmed bookings
+                  {data.summary.bookingCount} {t.revenueReport.confirmedBookings}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Tax Collected</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.revenueReport.taxCollected}</CardTitle>
                 <IndianRupee className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600">
                   {formatCurrency(data.summary.totalTax)}
                 </div>
-                <p className="text-muted-foreground text-xs">GST collected</p>
+                <p className="text-muted-foreground text-xs">{t.revenueReport.gstCollected}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Bookings</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.revenueReport.bookingsLabel}</CardTitle>
                 <Car className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {data.summary.bookingCount}
                 </div>
-                <p className="text-muted-foreground text-xs">Confirmed trips</p>
+                <p className="text-muted-foreground text-xs">{t.revenueReport.confirmedTrips}</p>
               </CardContent>
             </Card>
           </div>
@@ -190,17 +192,17 @@ export default function RevenueReportPage() {
           {data.byVehicleType.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Revenue by Vehicle Type</CardTitle>
+                <CardTitle className="text-lg">{t.revenueReport.revenueByVehicle}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-muted-foreground border-b text-left">
-                        <th className="p-3 font-medium">Vehicle Type</th>
-                        <th className="p-3 font-medium text-right">Bookings</th>
-                        <th className="p-3 font-medium text-right">Revenue</th>
-                        <th className="p-3 font-medium text-right">Tax</th>
+                        <th className="p-3 font-medium">{t.revenueReport.vehicleType}</th>
+                        <th className="p-3 font-medium text-right">{t.revenueReport.bookings}</th>
+                        <th className="p-3 font-medium text-right">{t.revenueReport.revenue}</th>
+                        <th className="p-3 font-medium text-right">{t.revenueReport.tax}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -210,7 +212,7 @@ export default function RevenueReportPage() {
                           className="border-b last:border-0 hover:bg-gray-50"
                         >
                           <td className="p-3 font-medium">
-                            {item.vehicleType || "Not specified"}
+                            {item.vehicleType || t.revenueReport.notSpecified}
                           </td>
                           <td className="p-3 text-right">{item.count}</td>
                           <td className="p-3 text-right">

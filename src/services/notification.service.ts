@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NotificationChannel, NotificationType, NotificationStatus } from "@prisma/client";
 import { sendEmail, bookingConfirmationEmail, statusUpdateEmail, paymentReminderEmail } from "./email.service";
-import { sendSms, bookingConfirmationSms, statusUpdateSms, paymentReminderSms } from "./sms.service";
-import { sendWhatsApp, bookingConfirmationWhatsApp, statusUpdateWhatsApp, paymentReminderWhatsApp } from "./whatsapp.service";
+import { generateWhatsAppUrl, bookingConfirmationWhatsApp, statusUpdateWhatsApp, paymentReminderWhatsApp } from "./whatsapp.service";
 import { BOOKING_STATUS_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/helpers/currency";
 
@@ -11,6 +10,7 @@ interface NotificationResult {
   success: boolean;
   messageId?: string;
   error?: string;
+  whatsappUrl?: string;
 }
 
 async function logNotification(params: {
@@ -72,41 +72,22 @@ export async function sendBookingConfirmation(booking: {
     });
   }
 
-  // SMS
-  if (settings?.smsEnabled) {
-    const smsBody = bookingConfirmationSms(booking.bookingId, booking.customer.name);
-    const result = await sendSms({ to: booking.customer.phone, body: smsBody });
-    results.push({ channel: "SMS", ...result });
-    await logNotification({
-      channel: "SMS",
-      type: "BOOKING_CONFIRMATION",
-      status: result.success ? "SENT" : "FAILED",
-      recipientPhone: booking.customer.phone,
-      body: smsBody,
-      bookingId: booking.id,
-      providerMessageId: result.messageSid,
-      errorMessage: result.error,
-    });
-  }
-
-  // WhatsApp
+  // WhatsApp — generate wa.me URL (admin opens it manually)
   if (settings?.whatsappEnabled) {
     const waBody = bookingConfirmationWhatsApp(booking.bookingId, booking.customer.name, {
       pickupLocation: booking.pickupLocation,
       dropLocation: booking.dropLocation,
       travelDate: travelDateStr,
     });
-    const result = await sendWhatsApp({ to: booking.customer.phone, body: waBody });
-    results.push({ channel: "WHATSAPP", ...result });
+    const whatsappUrl = generateWhatsAppUrl(booking.customer.phone, waBody);
+    results.push({ channel: "WHATSAPP", success: true, whatsappUrl });
     await logNotification({
       channel: "WHATSAPP",
       type: "BOOKING_CONFIRMATION",
-      status: result.success ? "SENT" : "FAILED",
+      status: "SENT",
       recipientPhone: booking.customer.phone,
       body: waBody,
       bookingId: booking.id,
-      providerMessageId: result.messageSid,
-      errorMessage: result.error,
     });
   }
 
@@ -117,6 +98,11 @@ export async function sendStatusNotification(booking: {
   id: string;
   bookingId: string;
   customer: { name: string; phone: string; email: string | null };
+  totalAmount?: unknown;
+  tollCharges?: unknown;
+  extraCharges?: unknown;
+  extraChargesNote?: string | null;
+  driver?: { name: string; phone: string | null } | null;
 }, newStatus: string): Promise<NotificationResult[]> {
   const results: NotificationResult[] = [];
   const settings = await prisma.settings.findUnique({ where: { id: "app_settings" } });
@@ -152,37 +138,28 @@ export async function sendStatusNotification(booking: {
     });
   }
 
-  // SMS
-  if (settings?.smsEnabled) {
-    const smsBody = statusUpdateSms(booking.bookingId, statusLabel);
-    const result = await sendSms({ to: booking.customer.phone, body: smsBody });
-    results.push({ channel: "SMS", ...result });
-    await logNotification({
-      channel: "SMS",
-      type: notificationType,
-      status: result.success ? "SENT" : "FAILED",
-      recipientPhone: booking.customer.phone,
-      body: smsBody,
-      bookingId: booking.id,
-      providerMessageId: result.messageSid,
-      errorMessage: result.error,
-    });
-  }
-
-  // WhatsApp
+  // WhatsApp — generate wa.me URL with pricing + driver details
   if (settings?.whatsappEnabled) {
-    const waBody = statusUpdateWhatsApp(booking.bookingId, statusLabel, message);
-    const result = await sendWhatsApp({ to: booking.customer.phone, body: waBody });
-    results.push({ channel: "WHATSAPP", ...result });
+    const pricing = booking.totalAmount ? {
+      totalAmount: formatCurrency(booking.totalAmount as string),
+      tollCharges: Number(booking.tollCharges || 0),
+      extraCharges: Number(booking.extraCharges || 0),
+      extraChargesNote: booking.extraChargesNote || undefined,
+    } : undefined;
+    const driver = booking.driver ? {
+      name: booking.driver.name,
+      phone: booking.driver.phone,
+    } : undefined;
+    const waBody = statusUpdateWhatsApp(booking.bookingId, statusLabel, message, pricing, driver);
+    const whatsappUrl = generateWhatsAppUrl(booking.customer.phone, waBody);
+    results.push({ channel: "WHATSAPP", success: true, whatsappUrl });
     await logNotification({
       channel: "WHATSAPP",
       type: notificationType,
-      status: result.success ? "SENT" : "FAILED",
+      status: "SENT",
       recipientPhone: booking.customer.phone,
       body: waBody,
       bookingId: booking.id,
-      providerMessageId: result.messageSid,
-      errorMessage: result.error,
     });
   }
 
@@ -227,35 +204,17 @@ export async function sendPaymentReminderNotification(booking: {
       });
     }
 
-    if (channel === "SMS") {
-      const smsBody = customMessage || paymentReminderSms(booking.bookingId, amount);
-      const result = await sendSms({ to: booking.customer.phone, body: smsBody });
-      results.push({ channel: "SMS", ...result });
-      await logNotification({
-        channel: "SMS",
-        type: "PAYMENT_REMINDER",
-        status: result.success ? "SENT" : "FAILED",
-        recipientPhone: booking.customer.phone,
-        body: smsBody,
-        bookingId: booking.id,
-        providerMessageId: result.messageSid,
-        errorMessage: result.error,
-      });
-    }
-
     if (channel === "WHATSAPP") {
       const waBody = customMessage || paymentReminderWhatsApp(booking.bookingId, amount, dueDate);
-      const result = await sendWhatsApp({ to: booking.customer.phone, body: waBody });
-      results.push({ channel: "WHATSAPP", ...result });
+      const whatsappUrl = generateWhatsAppUrl(booking.customer.phone, waBody);
+      results.push({ channel: "WHATSAPP", success: true, whatsappUrl });
       await logNotification({
         channel: "WHATSAPP",
         type: "PAYMENT_REMINDER",
-        status: result.success ? "SENT" : "FAILED",
+        status: "SENT",
         recipientPhone: booking.customer.phone,
         body: waBody,
         bookingId: booking.id,
-        providerMessageId: result.messageSid,
-        errorMessage: result.error,
       });
     }
   }
@@ -267,6 +226,8 @@ function getStatusMessage(status: string): string {
   switch (status) {
     case "CONFIRMED":
       return "Your booking is confirmed! Your vehicle will be ready on the scheduled date.";
+    case "COMPLETED":
+      return "Your ride has been completed successfully. Thank you for travelling with us! We hope you had a great experience.";
     case "CANCELLED":
       return "Your booking has been cancelled. Contact us if you have any questions.";
     default:
@@ -277,6 +238,7 @@ function getStatusMessage(status: string): string {
 function getNotificationType(status: string): NotificationType {
   switch (status) {
     case "CONFIRMED": return "BOOKING_CONFIRMED";
+    case "COMPLETED": return "STATUS_UPDATE";
     case "CANCELLED": return "BOOKING_CANCELLED";
     default: return "STATUS_UPDATE";
   }

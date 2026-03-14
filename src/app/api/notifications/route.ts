@@ -4,14 +4,14 @@ import { Prisma, NotificationType, NotificationStatus, NotificationChannel } fro
 import {
   successResponse,
   errorResponse,
-  requireAuth,
+  requireAdmin,
   getPaginationParams,
   paginationMeta,
 } from "@/lib/api-helpers";
 
 // GET /api/notifications - List notification logs (admin only)
 export async function GET(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useT } from "@/lib/i18n/language-context";
 import { Bus, Eye, EyeOff } from "lucide-react";
 
 export default function AdminLoginPage() {
@@ -16,12 +17,13 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const t = useT();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (!email || !password) {
-      toast.error("Please fill in all fields.");
+      toast.error(t.login.fillAllFields);
       return;
     }
 
@@ -34,15 +36,24 @@ export default function AdminLoginPage() {
       });
 
       if (result?.error) {
-        toast.error("Invalid email or password.");
+        toast.error(t.login.invalidCredentials);
         return;
       }
 
-      toast.success("Login successful!");
-      router.push("/admin");
+      toast.success(t.login.success);
+
+      // Fetch session to determine redirect based on role
+      const sessionRes = await fetch("/api/auth/session");
+      const session = await sessionRes.json();
+
+      if (session?.user?.role === "DRIVER") {
+        router.push("/driver");
+      } else {
+        router.push("/admin");
+      }
       router.refresh();
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      toast.error(t.login.genericError);
     } finally {
       setLoading(false);
     }
@@ -55,19 +66,19 @@ export default function AdminLoginPage() {
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100">
             <Bus className="h-6 w-6 text-orange-500" />
           </div>
-          <CardTitle className="text-2xl">Admin Login</CardTitle>
+          <CardTitle className="text-2xl">{t.login.title}</CardTitle>
           <CardDescription>
-            Sign in to access the admin dashboard
+            {t.login.subtitle}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.login.email}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@sarthaktourandtravels.com"
+                placeholder={t.login.emailPlaceholder}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1"
@@ -75,12 +86,12 @@ export default function AdminLoginPage() {
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t.login.password}</Label>
               <div className="relative mt-1">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder={t.login.passwordPlaceholder}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -101,7 +112,7 @@ export default function AdminLoginPage() {
               </div>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? t.common.signingIn : t.login.submit}
             </Button>
           </form>
         </CardContent>

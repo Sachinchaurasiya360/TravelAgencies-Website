@@ -4,7 +4,7 @@ import { Prisma, NotificationType, NotificationStatus, NotificationChannel } fro
 import {
   successResponse,
   errorResponse,
-  requireAuth,
+  requireAdmin,
   getPaginationParams,
   paginationMeta,
 } from "@/lib/api-helpers";
@@ -12,7 +12,7 @@ import { sendPaymentReminderNotification } from "@/services/notification.service
 
 // GET /api/reminders - List payment reminder logs (admin only)
 export async function GET(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/reminders - Send a payment reminder (admin only)
 export async function POST(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {
@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
       return errorResponse("Booking ID is required", 400);
     }
 
-    if (!channel || !["EMAIL", "SMS", "WHATSAPP"].includes(channel)) {
-      return errorResponse("Valid channel (EMAIL, SMS, WHATSAPP) is required", 400);
+    if (!channel || !["EMAIL", "WHATSAPP"].includes(channel)) {
+      return errorResponse("Valid channel (EMAIL, WHATSAPP) is required", 400);
     }
 
     // Fetch booking with customer

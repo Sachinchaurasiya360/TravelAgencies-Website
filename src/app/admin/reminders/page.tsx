@@ -18,6 +18,8 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatDateTime } from "@/lib/helpers/date";
+import { useT } from "@/lib/i18n/language-context";
+import { interpolate } from "@/lib/i18n";
 import { Bell, Send, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Reminder {
@@ -47,6 +49,7 @@ interface OutstandingBooking {
 }
 
 export default function RemindersPage() {
+  const t = useT();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -79,7 +82,7 @@ export default function RemindersPage() {
         setTotalPages(result.data.pagination.totalPages);
       }
     } catch {
-      toast.error("Failed to fetch reminders");
+      toast.error(t.reminders.fetchFailed);
     } finally {
       setLoading(false);
     }
@@ -97,7 +100,7 @@ export default function RemindersPage() {
         setOutstandingBookings(result.data.bookings);
       }
     } catch {
-      toast.error("Failed to load bookings");
+      toast.error(t.reminders.loadBookingsFailed);
     }
   }
 
@@ -111,7 +114,7 @@ export default function RemindersPage() {
 
   async function handleSendReminder() {
     if (!selectedBookingId) {
-      toast.error("Please select a booking");
+      toast.error(t.reminders.selectBookingError);
       return;
     }
     setSending(true);
@@ -127,14 +130,26 @@ export default function RemindersPage() {
       });
       const result = await res.json();
       if (result.success) {
-        toast.success("Payment reminder sent!");
+        // If WhatsApp channel, open wa.me URL in a new tab
+        const waResult = result.data?.results?.find(
+          (r: { channel: string; whatsappUrl?: string }) =>
+            r.channel === "WHATSAPP" && r.whatsappUrl
+        );
+        if (waResult?.whatsappUrl) {
+          window.open(waResult.whatsappUrl, "_blank");
+        }
+        toast.success(
+          waResult?.whatsappUrl
+            ? t.reminders.whatsappOpened
+            : t.reminders.reminderSent
+        );
         setDialogOpen(false);
         fetchReminders();
       } else {
-        toast.error(result.error || "Failed to send reminder");
+        toast.error(result.error || t.reminders.sendFailed);
       }
     } catch {
-      toast.error("Failed to send reminder");
+      toast.error(t.reminders.sendFailed);
     } finally {
       setSending(false);
     }
@@ -143,12 +158,12 @@ export default function RemindersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Payment Reminders"
-        description="View and send payment reminder notifications"
+        title={t.reminders.title}
+        description={t.reminders.subtitle}
       >
         <Button onClick={openSendDialog}>
           <Send className="mr-2 h-4 w-4" />
-          Send Reminder
+          {t.reminders.sendReminder}
         </Button>
       </PageHeader>
 
@@ -160,8 +175,8 @@ export default function RemindersPage() {
           ) : reminders.length === 0 ? (
             <EmptyState
               icon={Bell}
-              title="No reminders sent"
-              description="No payment reminders have been sent yet."
+              title={t.reminders.noRemindersSent}
+              description={t.reminders.noRemindersMatch}
             />
           ) : (
             <>
@@ -169,12 +184,12 @@ export default function RemindersPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-muted-foreground border-b text-left">
-                      <th className="p-4 font-medium">Recipient</th>
-                      <th className="p-4 font-medium">Customer</th>
-                      <th className="p-4 font-medium">Booking</th>
-                      <th className="p-4 font-medium">Channel</th>
-                      <th className="p-4 font-medium">Status</th>
-                      <th className="p-4 font-medium">Sent At</th>
+                      <th className="p-4 font-medium">{t.reminders.recipient}</th>
+                      <th className="p-4 font-medium">{t.reminders.customer}</th>
+                      <th className="p-4 font-medium">{t.reminders.booking}</th>
+                      <th className="p-4 font-medium">{t.reminders.channel}</th>
+                      <th className="p-4 font-medium">{t.reminders.status}</th>
+                      <th className="p-4 font-medium">{t.reminders.sentAt}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -229,7 +244,7 @@ export default function RemindersPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between border-t p-4">
                 <p className="text-muted-foreground text-sm">
-                  Page {page} of {totalPages}
+                  {interpolate(t.common.pageOf, { page, total: totalPages })}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -239,7 +254,7 @@ export default function RemindersPage() {
                     onClick={() => setPage(page - 1)}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Prev
+                    {t.common.prev}
                   </Button>
                   <Button
                     variant="outline"
@@ -247,7 +262,7 @@ export default function RemindersPage() {
                     disabled={page >= totalPages}
                     onClick={() => setPage(page + 1)}
                   >
-                    Next
+                    {t.common.next}
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -261,23 +276,23 @@ export default function RemindersPage() {
       <ConfirmDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        title="Send Payment Reminder"
-        description="Select a booking with outstanding dues and choose how to notify the customer."
-        confirmLabel={sending ? "Sending..." : "Send Reminder"}
+        title={t.reminders.dialogTitle}
+        description={t.reminders.dialogDescription}
+        confirmLabel={sending ? t.common.sending : t.reminders.sendReminder}
         onConfirm={handleSendReminder}
         loading={sending}
       >
         <div className="space-y-4 py-2">
           <div>
-            <Label>Booking *</Label>
+            <Label>{t.reminders.bookingRequired}</Label>
             <Select value={selectedBookingId} onValueChange={setSelectedBookingId}>
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select a booking" />
+                <SelectValue placeholder={t.reminders.selectBooking} />
               </SelectTrigger>
               <SelectContent>
                 {outstandingBookings.length === 0 ? (
                   <SelectItem value="_none" disabled>
-                    No bookings with outstanding dues
+                    {t.reminders.noOutstandingBookings}
                   </SelectItem>
                 ) : (
                   outstandingBookings.map((b) => (
@@ -290,22 +305,21 @@ export default function RemindersPage() {
             </Select>
           </div>
           <div>
-            <Label>Channel *</Label>
+            <Label>{t.reminders.channelRequired}</Label>
             <Select value={channel} onValueChange={setChannel}>
               <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="EMAIL">Email</SelectItem>
-                <SelectItem value="SMS">SMS</SelectItem>
-                <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                <SelectItem value="EMAIL">{t.reminders.channelEmail}</SelectItem>
+                <SelectItem value="WHATSAPP">{t.reminders.channelWhatsApp}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Custom Message (optional)</Label>
+            <Label>{t.reminders.customMessage}</Label>
             <Textarea
-              placeholder="Leave blank to use the default reminder template..."
+              placeholder={t.reminders.messagePlaceholder}
               value={customMessage}
               onChange={(e) => setCustomMessage(e.target.value)}
               rows={3}

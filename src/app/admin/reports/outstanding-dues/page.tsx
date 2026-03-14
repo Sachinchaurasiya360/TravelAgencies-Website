@@ -17,6 +17,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { useT } from "@/lib/i18n/language-context";
+import { interpolate } from "@/lib/i18n";
+import { getStatusLabel } from "@/lib/i18n/label-maps";
 
 interface OutstandingBooking {
   id: string;
@@ -44,6 +47,7 @@ interface OutstandingData {
 }
 
 export default function OutstandingDuesPage() {
+  const t = useT();
   const [data, setData] = useState<OutstandingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -56,7 +60,7 @@ export default function OutstandingDuesPage() {
       const result = await res.json();
       if (result.success) setData(result.data);
     } catch {
-      toast.error("Failed to fetch outstanding dues");
+      toast.error(t.outstandingDues.fetchFailed);
     } finally {
       setLoading(false);
     }
@@ -69,13 +73,13 @@ export default function OutstandingDuesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Outstanding Dues"
-        description="Unpaid invoices and overdue payments"
+        title={t.outstandingDues.title}
+        description={t.outstandingDues.subtitle}
       >
         <Button variant="outline" asChild>
           <Link href="/admin/reports">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+            {t.common.back}
           </Link>
         </Button>
       </PageHeader>
@@ -88,7 +92,7 @@ export default function OutstandingDuesPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.outstandingDues.totalOutstanding}</CardTitle>
                 <IndianRupee className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
@@ -96,14 +100,14 @@ export default function OutstandingDuesPage() {
                   {formatCurrency(data.summary.totalOutstanding)}
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  Across {data.summary.totalBookings} bookings
+                  {interpolate(t.outstandingDues.acrossBookings, { count: data.summary.totalBookings })}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.outstandingDues.overdueLabel}</CardTitle>
                 <AlertCircle className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
@@ -111,19 +115,19 @@ export default function OutstandingDuesPage() {
                   {formatCurrency(data.summary.overdueAmount)}
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  {data.summary.overdueCount} overdue bookings
+                  {interpolate(t.outstandingDues.overdueBookings, { count: data.summary.overdueCount })}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Pending Bookings</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.outstandingDues.pendingBookings}</CardTitle>
                 <Clock className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{data.summary.totalBookings}</div>
-                <p className="text-muted-foreground text-xs">With pending payments</p>
+                <p className="text-muted-foreground text-xs">{t.outstandingDues.withPendingPayments}</p>
               </CardContent>
             </Card>
           </div>
@@ -135,13 +139,13 @@ export default function OutstandingDuesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-muted-foreground border-b text-left">
-                      <th className="p-4 font-medium">Booking</th>
-                      <th className="p-4 font-medium">Customer</th>
-                      <th className="p-4 font-medium text-right">Total</th>
-                      <th className="p-4 font-medium text-right">Paid</th>
-                      <th className="p-4 font-medium text-right">Due</th>
-                      <th className="p-4 font-medium">Status</th>
-                      <th className="p-4 font-medium">Due Date</th>
+                      <th className="p-4 font-medium">{t.outstandingDues.booking}</th>
+                      <th className="p-4 font-medium">{t.outstandingDues.customer}</th>
+                      <th className="p-4 font-medium text-right">{t.outstandingDues.total}</th>
+                      <th className="p-4 font-medium text-right">{t.outstandingDues.paid}</th>
+                      <th className="p-4 font-medium text-right">{t.outstandingDues.due}</th>
+                      <th className="p-4 font-medium">{t.outstandingDues.status}</th>
+                      <th className="p-4 font-medium">{t.outstandingDues.dueDate}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -170,7 +174,7 @@ export default function OutstandingDuesPage() {
                           {formatCurrency(b.outstanding)}
                         </td>
                         <td className="p-4">
-                          <StatusBadge status={b.paymentStatus} />
+                          <StatusBadge status={b.paymentStatus} label={getStatusLabel(t, b.paymentStatus)} />
                         </td>
                         <td className="p-4 text-muted-foreground">
                           {b.paymentDueDate
@@ -178,7 +182,7 @@ export default function OutstandingDuesPage() {
                             : "-"}
                           {b.isOverdue && (
                             <span className="ml-1 text-xs font-medium text-red-600">
-                              Overdue
+                              {t.common.overdue}
                             </span>
                           )}
                         </td>
@@ -192,7 +196,7 @@ export default function OutstandingDuesPage() {
               {data.pagination.totalPages > 1 && (
                 <div className="flex items-center justify-between border-t p-4">
                   <p className="text-muted-foreground text-sm">
-                    Page {data.pagination.page} of {data.pagination.totalPages}
+                    {interpolate(t.common.pageOf, { page: data.pagination.page, total: data.pagination.totalPages })}
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -202,7 +206,7 @@ export default function OutstandingDuesPage() {
                       onClick={() => setPage(page - 1)}
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Prev
+                      {t.common.prev}
                     </Button>
                     <Button
                       variant="outline"
@@ -210,7 +214,7 @@ export default function OutstandingDuesPage() {
                       disabled={page >= data.pagination.totalPages}
                       onClick={() => setPage(page + 1)}
                     >
-                      Next
+                      {t.common.next}
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>

@@ -2,35 +2,40 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma, InvoiceStatus, ActivityAction } from "@prisma/client";
 import { createInvoiceSchema } from "@/validators/invoice.validator";
-import { generateInvoiceNumber } from "@/lib/helpers/booking-id";
 import { calculateGst } from "@/lib/helpers/gst";
 import { amountToWords } from "@/lib/helpers/currency";
 import {
   successResponse,
   errorResponse,
+  requireAdmin,
   requireAuth,
   getPaginationParams,
   paginationMeta,
+  safeSortField,
+  validEnumOrUndefined,
 } from "@/lib/api-helpers";
 import { logActivity } from "@/services/activity-log.service";
 
+const INVOICE_SORT_FIELDS = ["createdAt", "invoiceDate", "grandTotal", "invoiceNumber"];
+const VALID_INVOICE_STATUSES = ["DRAFT", "ISSUED", "PAID", "PARTIALLY_PAID", "CANCELLED", "VOID"];
+
 // GET /api/invoices - List all invoices (admin only)
 export async function GET(request: NextRequest) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   if (!session) return errorResponse("Unauthorized", 401);
 
   try {
     const searchParams = request.nextUrl.searchParams;
     const { page, limit, skip, sortBy, sortOrder } = getPaginationParams(searchParams);
 
-    const status = searchParams.get("status") as InvoiceStatus | null;
+    const status = validEnumOrUndefined(searchParams.get("status"), VALID_INVOICE_STATUSES);
     const search = searchParams.get("search");
     const fromDate = searchParams.get("fromDate");
     const toDate = searchParams.get("toDate");
 
     const where: Prisma.InvoiceWhereInput = {};
 
-    if (status) where.status = status;
+    if (status) where.status = status as InvoiceStatus;
 
     if (search) {
       where.OR = [
@@ -51,10 +56,10 @@ export async function GET(request: NextRequest) {
       prisma.invoice.findMany({
         where,
         include: {
-          booking: { select: { bookingId: true, tripType: true, vehicleType: true } },
+          booking: { select: { id: true, bookingId: true, tripType: true, vehicleType: true } },
           customer: { select: { id: true, name: true, phone: true } },
         },
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: { [safeSortField(sortBy, INVOICE_SORT_FIELDS)]: sortOrder },
         skip,
         take: limit,
       }),
@@ -71,7 +76,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/invoices - Create invoice from booking (admin only)
+// POST /api/invoices - Create invoice from booking (admin + driver)
 export async function POST(request: NextRequest) {
   const session = await requireAuth();
   if (!session) return errorResponse("Unauthorized", 401);
@@ -86,28 +91,32 @@ export async function POST(request: NextRequest) {
 
     const data = parsed.data;
 
-    // Fetch booking with customer
-    const booking = await prisma.booking.findUnique({
-      where: { id: data.bookingId },
-      include: { customer: true },
-    });
+    // Fetch booking + settings in parallel (outside transaction for early validation)
+    const [booking, settings] = await Promise.all([
+      prisma.booking.findUnique({
+        where: { id: data.bookingId },
+        include: { customer: true },
+      }),
+      prisma.settings.findUnique({ where: { id: "app_settings" } }),
+    ]);
 
     if (!booking) return errorResponse("Booking not found", 404);
+
+    // Driver can only create invoices for their own bookings
+    const role = (session.user as { role: string }).role;
+    if (role === "DRIVER" && booking.driverId !== session.user.id) {
+      return errorResponse("Access denied", 403);
+    }
 
     if (!booking.baseFare || !booking.totalAmount) {
       return errorResponse("Booking pricing must be set before creating an invoice", 400);
     }
 
-    // Fetch company settings
-    const settings = await prisma.settings.findUnique({
-      where: { id: "app_settings" },
-    });
-
     if (!settings) {
       return errorResponse("Company settings not configured. Please configure settings first.", 400);
     }
 
-    // Calculate GST (only if booking has GST enabled)
+    // Calculate GST
     const subtotal = Number(booking.baseFare);
     const isInterState = data.isInterState ?? false;
     const includeGst = booking.includeGst;
@@ -115,95 +124,103 @@ export async function POST(request: NextRequest) {
       ? calculateGst(subtotal, isInterState)
       : { subtotal, cgstRate: 0, sgstRate: 0, igstRate: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalTax: 0 };
 
-    // Calculate grand total
     const tollCharges = Number(booking.tollCharges || 0);
+    const parkingCharges = Number(booking.parkingCharges || 0);
     const driverAllowance = Number(booking.driverAllowance || 0);
     const extraCharges = Number(booking.extraCharges || 0);
     const discount = Number(booking.discount || 0);
-    const grandTotal = subtotal + gst.totalTax + tollCharges + driverAllowance + extraCharges - discount;
+    const grandTotal = subtotal + gst.totalTax + tollCharges + parkingCharges + driverAllowance + extraCharges - discount;
 
-    // Calculate amount already paid for this booking
-    const paidResult = await prisma.payment.aggregate({
-      where: { bookingId: data.bookingId },
-      _sum: { amount: true },
-    });
-    const amountPaid = Number(paidResult._sum.amount || 0);
-    const balanceDue = Math.max(0, grandTotal - amountPaid);
-
-    // Generate invoice number
-    const invoiceNumber = await generateInvoiceNumber();
-
-    // Calculate due date
     const dueDate = data.dueDate || new Date(
       Date.now() + (settings.defaultPaymentDueDays || 7) * 24 * 60 * 60 * 1000
     );
 
-    // Service description
     const serviceDescription = data.serviceDescription ||
       `Transportation service - ${booking.pickupLocation} to ${booking.dropLocation}`;
 
-    // Create the invoice
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        status: InvoiceStatus.DRAFT,
-        bookingId: booking.id,
-        customerId: booking.customerId,
-        invoiceDate: new Date(),
-        dueDate,
+    // Wrap invoice number generation + creation in a transaction
+    const invoice = await prisma.$transaction(async (tx) => {
+      // Generate invoice number atomically
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const prefix = `INV-${today}-`;
+      const lastInvoice = await tx.invoice.findFirst({
+        where: { invoiceNumber: { startsWith: prefix } },
+        orderBy: { invoiceNumber: "desc" },
+        select: { invoiceNumber: true },
+      });
+      let seq = 1;
+      if (lastInvoice) {
+        seq = parseInt(lastInvoice.invoiceNumber.split("-").pop() || "0", 10) + 1;
+      }
+      const invoiceNumber = `${prefix}${seq.toString().padStart(4, "0")}`;
 
-        // Company details from settings
-        companyName: settings.companyName,
-        companyAddress: [settings.companyAddress, settings.companyCity, settings.companyState, settings.companyPincode]
-          .filter(Boolean)
-          .join(", "),
-        companyGstin: settings.companyGstin || "",
-        companyPhone: settings.companyPhone || "",
-        companyEmail: settings.companyEmail || "",
-        companyState: settings.companyState || "",
-        companyStateCode: settings.companyStateCode || "",
+      // Get amount already paid
+      const paidResult = await tx.payment.aggregate({
+        where: { bookingId: data.bookingId },
+        _sum: { amount: true },
+      });
+      const amountPaid = Number(paidResult._sum.amount || 0);
+      const balanceDue = Math.max(0, grandTotal - amountPaid);
 
-        // Customer details from Customer
-        customerName: booking.customer.name,
-        customerAddress: [booking.customer.address, booking.customer.city, booking.customer.state, booking.customer.pincode]
-          .filter(Boolean)
-          .join(", ") || null,
-        customerPhone: booking.customer.phone,
-        customerEmail: booking.customer.email || null,
-        customerGstin: booking.customer.gstin || null,
-        customerState: booking.customer.state || null,
+      return tx.invoice.create({
+        data: {
+          invoiceNumber,
+          status: InvoiceStatus.DRAFT,
+          bookingId: booking.id,
+          customerId: booking.customerId,
+          invoiceDate: new Date(),
+          dueDate,
 
-        serviceDescription,
-        sacCode: settings.defaultSacCode || "9964",
+          companyName: settings.companyName,
+          companyAddress: [settings.companyAddress, settings.companyCity, settings.companyState, settings.companyPincode]
+            .filter(Boolean).join(", "),
+          companyGstin: settings.companyGstin || "",
+          companyPhone: settings.companyPhone || "",
+          companyEmail: settings.companyEmail || "",
+          companyState: settings.companyState || "",
+          companyStateCode: settings.companyStateCode || "",
 
-        // Amounts
-        subtotal,
-        cgstRate: gst.cgstRate,
-        sgstRate: gst.sgstRate,
-        igstRate: gst.igstRate,
-        cgstAmount: gst.cgstAmount,
-        sgstAmount: gst.sgstAmount,
-        igstAmount: gst.igstAmount,
-        totalTax: gst.totalTax,
-        tollCharges,
-        driverAllowance,
-        extraCharges,
-        discount,
-        grandTotal: Math.round(grandTotal * 100) / 100,
-        amountInWords: amountToWords(Math.round(grandTotal * 100) / 100),
-        amountPaid,
-        balanceDue: Math.round(balanceDue * 100) / 100,
+          customerName: booking.customer.name,
+          customerAddress: [booking.customer.address, booking.customer.city, booking.customer.state, booking.customer.pincode]
+            .filter(Boolean).join(", ") || null,
+          customerPhone: booking.customer.phone,
+          customerEmail: booking.customer.email || null,
+          customerGstin: booking.customer.gstin || null,
+          customerState: booking.customer.state || null,
 
-        isInterState,
-        placeOfSupply: settings.companyState || null,
+          serviceDescription,
+          sacCode: settings.defaultSacCode || "9964",
 
-        termsAndConditions: data.termsAndConditions || settings.invoiceTerms || null,
-        notes: data.notes || settings.invoiceNotes || null,
-      },
-      include: {
-        booking: { select: { bookingId: true } },
-        customer: { select: { id: true, name: true, phone: true } },
-      },
+          subtotal,
+          cgstRate: gst.cgstRate,
+          sgstRate: gst.sgstRate,
+          igstRate: gst.igstRate,
+          cgstAmount: gst.cgstAmount,
+          sgstAmount: gst.sgstAmount,
+          igstAmount: gst.igstAmount,
+          totalTax: gst.totalTax,
+          tollCharges,
+          parkingCharges,
+          driverAllowance,
+          extraCharges,
+          extraChargesNote: booking.extraChargesNote || null,
+          discount,
+          grandTotal: Math.round(grandTotal),
+          amountInWords: amountToWords(Math.round(grandTotal)),
+          amountPaid: Math.round(amountPaid),
+          balanceDue: Math.round(balanceDue),
+
+          isInterState,
+          placeOfSupply: settings.companyState || null,
+
+          termsAndConditions: data.termsAndConditions || settings.invoiceTerms || null,
+          notes: data.notes || settings.invoiceNotes || null,
+        },
+        include: {
+          booking: { select: { bookingId: true } },
+          customer: { select: { id: true, name: true, phone: true } },
+        },
+      });
     });
 
     logActivity({

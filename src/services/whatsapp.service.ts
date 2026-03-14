@@ -1,75 +1,38 @@
-import twilio from "twilio";
-import { formatPhoneE164 } from "@/lib/helpers/phone";
+/**
+ * WhatsApp service — generates wa.me redirect URLs (no Twilio).
+ * The admin opens the link → WhatsApp opens with the message pre-filled.
+ */
 
-let twilioClient: twilio.Twilio | null = null;
-
-function getClient(): twilio.Twilio | null {
-  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-    return null;
-  }
-  if (!twilioClient) {
-    twilioClient = twilio(
-      process.env.TWILIO_ACCOUNT_SID,
-      process.env.TWILIO_AUTH_TOKEN
-    );
-  }
-  return twilioClient;
+function formatPhoneForWaMe(phone: string): string {
+  const cleaned = phone.replace(/\D/g, "");
+  // Already has country code (91 + 10 digits)
+  if (cleaned.startsWith("91") && cleaned.length === 12) return cleaned;
+  // 10-digit Indian number
+  if (cleaned.length === 10) return `91${cleaned}`;
+  return cleaned;
 }
 
-interface SendWhatsAppParams {
-  to: string;
-  body: string;
-  templateSid?: string;
-  variables?: Record<string, string>;
+export function generateWhatsAppUrl(phone: string, message: string): string {
+  const waPhone = formatPhoneForWaMe(phone);
+  const encoded = encodeURIComponent(message);
+  return `https://wa.me/${waPhone}?text=${encoded}`;
 }
 
-export async function sendWhatsApp(params: SendWhatsAppParams): Promise<{
-  success: boolean;
-  messageSid?: string;
-  error?: string;
-}> {
-  const client = getClient();
-  if (!client || !process.env.TWILIO_WHATSAPP_NUMBER) {
-    console.warn("Twilio WhatsApp not configured, skipping");
-    return { success: false, error: "WhatsApp service not configured" };
-  }
+// WhatsApp message templates
 
-  try {
-    const toNumber = formatPhoneE164(params.to);
-    const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER.startsWith("whatsapp:")
-      ? process.env.TWILIO_WHATSAPP_NUMBER
-      : `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
-
-    const message = await client.messages.create({
-      from: fromNumber,
-      to: `whatsapp:${toNumber}`,
-      body: params.body,
-    });
-
-    return { success: true, messageSid: message.sid };
-  } catch (error) {
-    console.error("WhatsApp send error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to send WhatsApp",
-    };
-  }
-}
-
-// WhatsApp templates (same content as SMS, but can be longer)
 export function bookingConfirmationWhatsApp(
   bookingId: string,
   customerName: string,
   details: { pickupLocation: string; dropLocation: string; travelDate: string }
 ): string {
-  return `Hello ${customerName}! 🚗
+  return `Hello ${customerName}!
 
 Your booking request has been received.
 
-📋 *Booking ID:* ${bookingId}
-📍 *Pickup:* ${details.pickupLocation}
-📍 *Drop:* ${details.dropLocation}
-📅 *Date:* ${details.travelDate}
+*Booking ID:* ${bookingId}
+*Pickup:* ${details.pickupLocation}
+*Drop:* ${details.dropLocation}
+*Date:* ${details.travelDate}
 
 Our team will review and confirm your booking shortly.
 
@@ -81,18 +44,49 @@ Track your booking: ${process.env.NEXT_PUBLIC_APP_URL}/track
 export function statusUpdateWhatsApp(
   bookingId: string,
   status: string,
-  message: string
+  message: string,
+  pricing?: {
+    totalAmount: string;
+    tollCharges: number;
+    extraChargesNote?: string;
+    extraCharges: number;
+  },
+  driver?: {
+    name: string;
+    phone: string | null;
+  }
 ): string {
-  return `Booking Update 📢
+  const isCompleted = status === "Completed";
+  let text = isCompleted
+    ? `Hello! 🙏\n\n${message}\n\n*Booking:* ${bookingId}`
+    : `Booking Update\n\n*Booking:* ${bookingId}\n*Status:* ${status}\n\n${message}`;
 
-*Booking:* ${bookingId}
-*Status:* ${status}
+  if (driver && !isCompleted) {
+    text += `\n\n*Driver:* ${driver.name}`;
+    if (driver.phone) {
+      text += `\n*Driver Contact:* ${driver.phone}`;
+    }
+  }
 
-${message}
+  if (pricing) {
+    const priceLabel = isCompleted ? "*Total Amount:*" : "*Expected Price:*";
+    text += `\n\n${priceLabel} ${pricing.totalAmount}`;
+    if (!isCompleted && pricing.tollCharges > 0) {
+      text += `\nFastTag/Toll charges will be applicable as per actual.`;
+    }
+    if (!isCompleted && pricing.extraCharges > 0 && pricing.extraChargesNote) {
+      text += `\n${pricing.extraChargesNote}: Extra charges applicable.`;
+    }
+  }
 
-Track: ${process.env.NEXT_PUBLIC_APP_URL}/track
+  if (isCompleted) {
+    text += `\n\nWe look forward to serving you again! 🚗`;
+  } else {
+    text += `\n\nTrack: ${process.env.NEXT_PUBLIC_APP_URL}/track`;
+  }
 
-- Sarthak Tour and Travels`;
+  text += `\n\n- Sarthak Tour and Travels`;
+  return text;
 }
 
 export function paymentReminderWhatsApp(
@@ -100,7 +94,7 @@ export function paymentReminderWhatsApp(
   amount: string,
   dueDate?: string
 ): string {
-  return `Payment Reminder 💰
+  return `Payment Reminder
 
 *Booking:* ${bookingId}
 *Amount Due:* ${amount}

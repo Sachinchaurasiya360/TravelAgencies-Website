@@ -12,18 +12,23 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, User } from "lucide-react";
 import { MobileNav } from "./mobile-nav";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { useT } from "@/lib/i18n/language-context";
 
 export function Topbar() {
   const { data: session } = useSession();
+  const t = useT();
 
   return (
     <header className="bg-background flex h-16 items-center justify-between border-b px-4 md:px-6">
       <div className="flex items-center gap-2">
         <MobileNav />
-        <h2 className="text-lg font-semibold md:hidden">Sarthak Travels</h2>
+        <h2 className="text-lg font-semibold md:hidden">{t.nav.companyName}</h2>
       </div>
 
-      <DropdownMenu>
+      <div className="flex items-center gap-1">
+        <LanguageSwitcher />
+        <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
@@ -48,10 +53,11 @@ export function Topbar() {
             className="text-red-600"
           >
             <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
+            {t.common.signOut}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }
