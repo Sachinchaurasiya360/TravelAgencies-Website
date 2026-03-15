@@ -27,6 +27,16 @@ export async function POST(request: NextRequest) {
       where: { bookingId },
       include: {
         customer: { select: { name: true, phone: true } },
+        driver: { select: { name: true, phone: true } },
+        payments: {
+          select: { amount: true, method: true, paymentDate: true, isAdvance: true },
+          orderBy: { paymentDate: "desc" as const },
+        },
+        invoices: {
+          select: { invoiceNumber: true, grandTotal: true, shareToken: true, signedAt: true },
+          orderBy: { createdAt: "desc" as const },
+          take: 1,
+        },
       },
     });
 
@@ -58,6 +68,31 @@ export async function POST(request: NextRequest) {
       cancelledAt: booking.cancelledAt,
       rejectionReason: booking.rejectionReason,
       cancellationReason: booking.cancellationReason,
+      driver: booking.driver ? { name: booking.driver.name, phone: booking.driver.phone } : null,
+      payments: booking.payments.map(p => ({
+        amount: p.amount?.toString(),
+        method: p.method,
+        paymentDate: p.paymentDate,
+        isAdvance: p.isAdvance,
+      })),
+      invoices: booking.invoices.map(inv => ({
+        invoiceNumber: inv.invoiceNumber,
+        grandTotal: inv.grandTotal?.toString(),
+        shareToken: inv.shareToken,
+        signedAt: inv.signedAt,
+      })),
+      estimatedDistance: booking.estimatedDistance,
+      actualDistance: booking.actualDistance,
+      pickupTime: booking.pickupTime,
+      baseFare: booking.baseFare?.toString() ?? null,
+      taxAmount: booking.taxAmount?.toString() ?? null,
+      tollCharges: booking.tollCharges?.toString() ?? null,
+      parkingCharges: booking.parkingCharges?.toString() ?? null,
+      driverAllowance: booking.driverAllowance?.toString() ?? null,
+      extraCharges: booking.extraCharges?.toString() ?? null,
+      extraChargesNote: booking.extraChargesNote,
+      discount: booking.discount?.toString() ?? null,
+      includeGst: booking.includeGst,
     });
   } catch (error) {
     console.error("Track booking error:", error);

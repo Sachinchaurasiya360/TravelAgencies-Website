@@ -217,6 +217,7 @@ const en = {
     shareFailed: "Failed to share bill",
     driverAssigned: "Driver assigned successfully",
     driverFailed: "Failed to assign driver",
+    totalKm: "Total KM",
   },
 
   bookingForm: {
@@ -386,6 +387,7 @@ const en = {
     expenseDeleted: "Expense deleted",
     deleteFailed: "Failed to delete expense",
     fetchFailed: "Failed to fetch expenses",
+    allTimeTotal: "All-Time Total Expenses",
   },
 
   refunds: {
@@ -628,6 +630,9 @@ const en = {
     tripDetails: "Trip Details",
     returnDate: "Return: {date}",
     distanceKm: "{distance} km",
+    actualDistance: "Total KM",
+    actualDistancePlaceholder: "Enter total kilometers driven",
+    totalKmDriven: "Total KM Driven",
     passengersCount: "{count} passengers",
     noteLabel: "Note: {note}",
     customer: "Customer",

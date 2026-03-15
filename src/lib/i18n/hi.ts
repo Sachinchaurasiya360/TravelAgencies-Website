@@ -219,6 +219,7 @@ const hi: Translations = {
     shareFailed: "बिल शेयर विफल",
     driverAssigned: "ड्राइवर सफलतापूर्वक असाइन हुआ",
     driverFailed: "ड्राइवर असाइन विफल",
+    totalKm: "कुल किलोमीटर",
   },
 
   bookingForm: {
@@ -388,6 +389,7 @@ const hi: Translations = {
     expenseDeleted: "खर्चा हटाया गया",
     deleteFailed: "खर्चा हटाने में विफल",
     fetchFailed: "खर्चे लोड करने में विफल",
+    allTimeTotal: "कुल खर्चे (सभी समय)",
   },
 
   refunds: {
@@ -630,6 +632,9 @@ const hi: Translations = {
     tripDetails: "यात्रा विवरण",
     returnDate: "वापसी: {date}",
     distanceKm: "{distance} किमी",
+    actualDistance: "कुल किलोमीटर",
+    actualDistancePlaceholder: "कुल किलोमीटर दर्ज करें",
+    totalKmDriven: "कुल किलोमीटर",
     passengersCount: "{count} यात्री",
     noteLabel: "नोट: {note}",
     customer: "ग्राहक",

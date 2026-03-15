@@ -52,6 +52,7 @@ export default function ExpensesPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [allTimeTotal, setAllTimeTotal] = useState("0");
 
   // Form state
   const [formOpen, setFormOpen] = useState(false);
@@ -90,6 +91,7 @@ export default function ExpensesPage() {
       if (result.success) {
         setExpenses(result.data.expenses);
         setTotalPages(result.data.pagination.totalPages);
+        setAllTimeTotal(result.data.allTimeTotal || "0");
       }
     } catch {
       toast.error(t.expenses.fetchFailed);
@@ -192,6 +194,25 @@ export default function ExpensesPage() {
           </Button>
         )}
       </PageHeader>
+
+      {/* All-time Total */}
+      <Card className="border-gray-200">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                {t.expenses.allTimeTotal}
+              </p>
+              <p className="mt-2 text-3xl font-semibold text-red-600">
+                {formatCurrency(allTimeTotal)}
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
+              <Wallet className="h-5 w-5 text-red-600" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Add/Edit Form */}
       {formOpen && (

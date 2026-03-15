@@ -61,6 +61,7 @@ interface BookingDetail {
   extraChargesNote: string | null;
   discount: string | null;
   totalAmount: string | null;
+  actualDistance: number | null;
   paymentStatus: string;
   paymentDueDate: string | null;
   adminRemarks: string | null;
@@ -661,6 +662,12 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   <span>{t.common.total}</span>
                   <span className="text-blue-600">{formatCurrency(booking.totalAmount)}</span>
                 </div>
+                {booking.actualDistance && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t.bookingDetail.totalKm}</span>
+                    <span>{booking.actualDistance} km</span>
+                  </div>
+                )}
                 {/* Allow edit if no invoice is signed */}
                 {!booking.invoices?.some((inv) => inv.signedAt) && (
                   <Button
@@ -863,7 +870,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                     id="payAmount"
                     type="number"
                     step="1"
-                    min="0.01"
+                    min="1"
                     value={paymentForm.amount}
                     onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                     required

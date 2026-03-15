@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       if (toDate) where.expenseDate.lte = new Date(toDate);
     }
 
-    const [expenses, total] = await Promise.all([
+    const [expenses, total, allTimeTotal] = await Promise.all([
       prisma.expense.findMany({
         where,
         include: {
@@ -58,11 +58,13 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.expense.count({ where }),
+      prisma.expense.aggregate({ _sum: { amount: true } }),
     ]);
 
     return successResponse({
       expenses,
       pagination: paginationMeta(total, page, limit),
+      allTimeTotal: allTimeTotal._sum.amount?.toString() || "0",
     });
   } catch (error) {
     console.error("Expenses list error:", error);

@@ -16,6 +16,11 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  User,
+  IndianRupee,
+  FileText,
+  CreditCard,
+  Car,
 } from "lucide-react";
 
 interface BookingData {
@@ -24,20 +29,39 @@ interface BookingData {
   travelDate: string;
   pickupLocation: string;
   dropLocation: string;
+  pickupTime: string | null;
   totalAmount: string | null;
   paymentStatus: string;
   createdAt: string;
   confirmedAt: string | null;
+  completedAt: string | null;
   cancelledAt: string | null;
   cancellationReason: string | null;
+  vehicleType: string | null;
+  tripType: string | null;
+  estimatedDistance: number | null;
+  actualDistance: number | null;
+  baseFare: string | null;
+  taxAmount: string | null;
+  tollCharges: string | null;
+  parkingCharges: string | null;
+  driverAllowance: string | null;
+  extraCharges: string | null;
+  extraChargesNote: string | null;
+  discount: string | null;
+  includeGst: boolean;
+  driver: { name: string; phone: string } | null;
+  payments: { amount: string; method: string; paymentDate: string; isAdvance: boolean }[];
+  invoices: { invoiceNumber: string; grandTotal: string; shareToken: string | null; signedAt: string | null }[];
 }
 
 const statusSteps = [
   { key: "PENDING", label: "Submitted", icon: Clock },
   { key: "CONFIRMED", label: "Confirmed", icon: CheckCircle2 },
+  { key: "COMPLETED", label: "Completed", icon: CheckCircle2 },
 ];
 
-const statusOrder = ["PENDING", "CONFIRMED"];
+const statusOrder = ["PENDING", "CONFIRMED", "COMPLETED"];
 
 export default function TrackPage() {
   return (
@@ -215,6 +239,42 @@ function TrackPageContent() {
                     {new Date(booking.travelDate).toLocaleDateString("en-IN")}
                   </span>
                 </div>
+                {booking.pickupTime && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="text-muted-foreground h-4 w-4" />
+                    <span className="text-muted-foreground">Pickup Time:</span>
+                    <span className="font-medium">{booking.pickupTime}</span>
+                  </div>
+                )}
+                {booking.vehicleType && (
+                  <div className="flex items-center gap-2">
+                    <Car className="text-muted-foreground h-4 w-4" />
+                    <span className="text-muted-foreground">Vehicle:</span>
+                    <span className="font-medium">
+                      {
+                        { SEDAN: "Sedan", SUV: "SUV", INNOVA: "Innova", INNOVA_CRYSTA: "Innova Crysta", TEMPO_TRAVELLER: "Tempo Traveller", BUS: "Bus" }[booking.vehicleType] ?? booking.vehicleType
+                      }
+                    </span>
+                  </div>
+                )}
+                {booking.tripType && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="text-muted-foreground h-4 w-4" />
+                    <span className="text-muted-foreground">Trip:</span>
+                    <span className="font-medium">
+                      {booking.tripType === "ONE_WAY" ? "One Way" : "Round Trip"}
+                    </span>
+                  </div>
+                )}
+                {(booking.actualDistance || booking.estimatedDistance) && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="text-muted-foreground h-4 w-4" />
+                    <span className="text-muted-foreground">Total Distance:</span>
+                    <span className="font-medium">
+                      {booking.actualDistance ?? booking.estimatedDistance} km
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 space-y-2 border-t pt-4">
@@ -235,15 +295,147 @@ function TrackPageContent() {
               </div>
 
               {booking.totalAmount && (
-                <div className="mt-4 flex items-center justify-between border-t pt-4">
-                  <span className="font-medium">Total Amount</span>
-                  <span className="text-lg font-bold text-orange-500">
-                    {formatCurrency(booking.totalAmount)}
-                  </span>
+                <div className="mt-4 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Total Amount</span>
+                    <span className="text-lg font-bold text-orange-500">
+                      {formatCurrency(booking.totalAmount)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Payment: <StatusBadge status={booking.paymentStatus} />
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* Driver Info */}
+          {booking.driver && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Driver Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Name</p>
+                  <p className="font-medium">{booking.driver.name}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Phone</p>
+                  <p className="font-medium">{booking.driver.phone}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Bill Breakdown */}
+          {booking.baseFare && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <IndianRupee className="h-5 w-5" />
+                  Bill Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Base Fare</span>
+                  <span>{formatCurrency(booking.baseFare)}</span>
+                </div>
+                {booking.includeGst && parseFloat(booking.taxAmount || "0") > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">GST (5%)</span>
+                    <span>{formatCurrency(booking.taxAmount)}</span>
+                  </div>
+                )}
+                {parseFloat(booking.tollCharges || "0") > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Toll / FastTag</span>
+                    <span>{formatCurrency(booking.tollCharges)}</span>
+                  </div>
+                )}
+                {parseFloat(booking.parkingCharges || "0") > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Parking</span>
+                    <span>{formatCurrency(booking.parkingCharges)}</span>
+                  </div>
+                )}
+                {parseFloat(booking.driverAllowance || "0") > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Driver Allowance</span>
+                    <span>{formatCurrency(booking.driverAllowance)}</span>
+                  </div>
+                )}
+                {parseFloat(booking.extraCharges || "0") > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{booking.extraChargesNote || "Other Charges"}</span>
+                    <span>{formatCurrency(booking.extraCharges)}</span>
+                  </div>
+                )}
+                {parseFloat(booking.discount || "0") > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount</span>
+                    <span>-{formatCurrency(booking.discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t pt-2 font-bold">
+                  <span>Total</span>
+                  <span className="text-orange-500">{formatCurrency(booking.totalAmount)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Payment History */}
+          {booking.payments && booking.payments.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Payment History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {booking.payments.map((payment, idx) => (
+                    <div key={idx} className="flex items-center justify-between rounded border p-3 text-sm">
+                      <div>
+                        <p className="font-medium">{formatCurrency(payment.amount)}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {payment.method === "CASH" ? "Cash" : "Online"}
+                          {payment.isAdvance && " (Advance)"}
+                        </p>
+                      </div>
+                      <p className="text-muted-foreground text-xs">
+                        {new Date(payment.paymentDate).toLocaleDateString("en-IN")}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* View Invoice Link */}
+          {booking.invoices && booking.invoices.length > 0 && booking.invoices[0].shareToken && (
+            <Card>
+              <CardContent className="py-4">
+                <a
+                  href={`/invoice/${booking.invoices[0].shareToken}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800"
+                >
+                  <FileText className="h-4 w-4" />
+                  View Invoice / Bill
+                </a>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>

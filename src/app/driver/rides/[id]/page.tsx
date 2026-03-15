@@ -55,6 +55,7 @@ interface BookingDetail {
   dropLocation: string;
   dropAddress: string | null;
   estimatedDistance: number | null;
+  actualDistance: number | null;
   vehicleType: string | null;
   vehiclePreference: string | null;
   passengerCount: number | null;
@@ -107,6 +108,7 @@ export default function RideDetailPage({
   // Pricing form
   const [pricingOpen, setPricingOpen] = useState(false);
   const [pricing, setPricing] = useState({
+    actualDistance: "",
     baseFare: "",
     tollCharges: "0",
     parkingCharges: "0",
@@ -310,6 +312,7 @@ export default function RideDetailPage({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          actualDistance: parseFloat(pricing.actualDistance) || undefined,
           baseFare: parseFloat(pricing.baseFare),
           tollCharges: parseFloat(pricing.tollCharges) || 0,
           parkingCharges: parseFloat(pricing.parkingCharges) || 0,
@@ -507,13 +510,19 @@ export default function RideDetailPage({
               </div>
             </div>
 
-            {(booking.estimatedDistance || booking.vehiclePreference || booking.passengerCount) && (
+            {(booking.estimatedDistance || booking.actualDistance || booking.vehiclePreference || booking.passengerCount) && (
               <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                 {booking.estimatedDistance && (
                   <span className="flex items-center gap-1">
                     <Route className="h-3.5 w-3.5" />
                     {interpolate(t.driver.distanceKm, { distance: booking.estimatedDistance })}
                   </span>
+                )}
+                {booking.actualDistance && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">{t.driver.totalKmDriven}</p>
+                    <p className="text-sm font-medium">{booking.actualDistance} km</p>
+                  </div>
                 )}
                 {booking.vehiclePreference && (
                   <span className="flex items-center gap-1">
@@ -578,6 +587,7 @@ export default function RideDetailPage({
                 className="h-7 text-xs"
                 onClick={() => {
                   setPricing({
+                    actualDistance: booking.actualDistance?.toString() || "",
                     baseFare: booking.baseFare || "",
                     tollCharges: booking.tollCharges || "0",
                     parkingCharges: booking.parkingCharges || "0",
@@ -598,6 +608,19 @@ export default function RideDetailPage({
 
           {pricingOpen ? (
             <form onSubmit={handlePricingSubmit} className="space-y-3">
+              <div>
+                <Label htmlFor="actualDistance" className="text-xs">{t.driver.actualDistance}</Label>
+                <Input
+                  id="actualDistance"
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder={t.driver.actualDistancePlaceholder}
+                  value={pricing.actualDistance}
+                  onChange={(e) => setPricing({ ...pricing, actualDistance: e.target.value })}
+                  className="mt-1 h-9"
+                />
+              </div>
               <div>
                 <Label htmlFor="baseFare" className="text-xs">{t.driver.baseFareRequired}</Label>
                 <Input
@@ -960,7 +983,7 @@ export default function RideDetailPage({
                   id="payAmount"
                   type="number"
                   step="1"
-                  min="0.01"
+                  min="1"
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
                   required

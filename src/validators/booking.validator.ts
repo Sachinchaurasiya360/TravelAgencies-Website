@@ -27,6 +27,7 @@ export const assignPricingSchema = z.object({
   discount: z.number().min(0).default(0),
   includeGst: z.boolean().default(false),
   paymentDueDate: z.coerce.date().optional(),
+  actualDistance: z.number().min(0).max(100000).optional(),
 });
 
 export const updateBookingStatusSchema = z.object({

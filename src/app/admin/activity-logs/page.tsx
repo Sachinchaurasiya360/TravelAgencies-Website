@@ -112,8 +112,8 @@ export default function ActivityLogsPage() {
                             {log.action}
                           </span>
                         </td>
-                        <td className="p-4 max-w-md">
-                          <p className="truncate">{log.description}</p>
+                        <td className="p-4">
+                          <p className="whitespace-normal wrap-break-word">{log.description}</p>
                         </td>
                       </tr>
                     ))}

@@ -47,6 +47,7 @@ interface InvoiceData {
   bankAccountName?: string | null;
   upiId?: string | null;
   estimatedDistance?: number | string | null;
+  actualDistance?: number | string | null;
   signatureData?: string | null;
   signedAt?: Date | string | null;
 }
@@ -108,7 +109,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     </div>
   </div>
 
-  ${Number(data.estimatedDistance || 0) > 0 ? `<div style="margin-bottom: 15px; padding: 8px 12px; background: #f8f9fa; border-radius: 4px;"><strong>Total Distance:</strong> ${Number(data.estimatedDistance).toLocaleString("en-IN")} km</div>` : ""}
+  ${Number(data.actualDistance || data.estimatedDistance || 0) > 0 ? `<div style="margin-bottom: 15px; padding: 8px 12px; background: #f8f9fa; border-radius: 4px;"><strong>Total Distance:</strong> ${Number(data.actualDistance || data.estimatedDistance).toLocaleString("en-IN")} km</div>` : ""}
 
   <table>
     <thead>

@@ -18,11 +18,11 @@ export async function GET(request: NextRequest) {
 
     if (type === "upcoming") {
       where.travelDate = { gte: now };
-      where.status = { not: "CANCELLED" };
+      where.status = { notIn: ["CANCELLED", "COMPLETED"] };
     } else {
       where.OR = [
-        { travelDate: { lt: now } },
-        { status: "CANCELLED" },
+        { travelDate: { lt: now }, status: { notIn: ["CANCELLED"] } },
+        { status: { in: ["COMPLETED", "CANCELLED"] } },
       ];
     }
 

@@ -18,7 +18,7 @@ export const updateSettingsSchema = z
       .or(z.literal("")),
     companyPan: z.string().max(10),
     companyCin: z.string().max(25),
-    gstRate: z.number().min(0).max(100),
+    gstRate: z.coerce.number().min(0).max(100),
     defaultSacCode: z.string().max(10),
     isInterState: z.boolean(),
     bankName: z.string().max(200),
@@ -35,7 +35,7 @@ export const updateSettingsSchema = z
     invoiceNotes: z.string().max(2000),
     bookingPrefix: z.string().max(10),
     autoApprove: z.boolean(),
-    defaultPaymentDueDays: z.number().int().min(1).max(365),
+    defaultPaymentDueDays: z.coerce.number().int().min(1).max(365),
   })
   .partial();
 

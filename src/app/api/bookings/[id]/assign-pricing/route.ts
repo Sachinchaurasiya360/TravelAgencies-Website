@@ -59,6 +59,7 @@ export async function PATCH(
         paymentDueDate: parsed.data.paymentDueDate
           ? new Date(parsed.data.paymentDueDate)
           : null,
+        ...(parsed.data.actualDistance !== undefined && { actualDistance: parsed.data.actualDistance }),
       },
     });
 

@@ -30,6 +30,7 @@ export async function GET(
               dropLocation: true,
               passengerCount: true,
               estimatedDistance: true,
+              actualDistance: true,
               driverId: true,
             },
           },
@@ -101,6 +102,7 @@ export async function GET(
       bankAccountName: settings?.bankAccountName,
       upiId: settings?.upiId,
       estimatedDistance: invoice.booking.estimatedDistance,
+      actualDistance: invoice.booking.actualDistance,
       signatureData: invoice.signatureData,
       signedAt: invoice.signedAt,
     });
