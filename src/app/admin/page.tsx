@@ -21,6 +21,7 @@ async function getDashboardData() {
     upcomingTripsCount,
     recentBookings,
     totalBookings,
+    upcomingDutySlips,
   ] = await Promise.all([
     prisma.booking.count({
       where: { createdAt: { gte: today, lt: tomorrow } },
@@ -44,11 +45,38 @@ async function getDashboardData() {
     prisma.booking.findMany({
       take: 10,
       orderBy: { createdAt: "desc" },
-      include: {
+      select: {
+        id: true,
+        bookingId: true,
+        status: true,
+        travelDate: true,
+        totalAmount: true,
         customer: { select: { name: true, phone: true } },
       },
     }),
     prisma.booking.count(),
+    prisma.dutySlip.findMany({
+      take: 10,
+      orderBy: { booking: { travelDate: "asc" } },
+      where: { booking: { travelDate: { gte: today } } },
+      select: {
+        id: true,
+        status: true,
+        guestName: true,
+        vehicleName: true,
+        vehicleNumber: true,
+        booking: {
+          select: {
+            id: true,
+            bookingId: true,
+            travelDate: true,
+            pickupLocation: true,
+            dropLocation: true,
+          },
+        },
+        driver: { select: { name: true } },
+      },
+    }),
   ]);
 
   return {
@@ -64,6 +92,19 @@ async function getDashboardData() {
       travelDate: b.travelDate.toISOString(),
       totalAmount: b.totalAmount?.toString() ?? null,
       customer: b.customer,
+    })),
+    upcomingDutySlips: upcomingDutySlips.map((ds) => ({
+      id: ds.id,
+      status: ds.status,
+      guestName: ds.guestName,
+      vehicleName: ds.vehicleName,
+      vehicleNumber: ds.vehicleNumber,
+      driverName: ds.driver?.name || "-",
+      bookingId: ds.booking.bookingId,
+      bookingDbId: ds.booking.id,
+      travelDate: ds.booking.travelDate.toISOString(),
+      pickupLocation: ds.booking.pickupLocation,
+      dropLocation: ds.booking.dropLocation,
     })),
   };
 }

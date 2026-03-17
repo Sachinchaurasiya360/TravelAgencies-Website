@@ -19,8 +19,9 @@ export async function GET(
       select: {
         id: true,
         name: true,
-        email: true,
         phone: true,
+        vehicleName: true,
+        vehicleNumber: true,
         isActive: true,
         createdAt: true,
         _count: { select: { driverBookings: true } },
@@ -57,8 +58,9 @@ export async function PATCH(
     const data: Record<string, unknown> = {};
     if (parsed.data.name !== undefined) data.name = parsed.data.name;
     if (parsed.data.phone !== undefined) data.phone = parsed.data.phone.replace(/^\+91/, "");
-    if (parsed.data.email !== undefined) data.email = parsed.data.email;
     if (parsed.data.isActive !== undefined) data.isActive = parsed.data.isActive;
+    if (parsed.data.vehicleName !== undefined) data.vehicleName = parsed.data.vehicleName;
+    if (parsed.data.vehicleNumber !== undefined) data.vehicleNumber = parsed.data.vehicleNumber;
 
     const updated = await prisma.user.update({
       where: { id },
@@ -66,8 +68,9 @@ export async function PATCH(
       select: {
         id: true,
         name: true,
-        email: true,
         phone: true,
+        vehicleName: true,
+        vehicleNumber: true,
         isActive: true,
         createdAt: true,
       },

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { adminCreateBookingSchema } from "@/validators/booking.validator";
 import { generateBookingId } from "@/lib/helpers/booking-id";
 import { successResponse, errorResponse, requireAdmin } from "@/lib/api-helpers";
-import { BookingStatus, VehicleType, TripType, ActivityAction } from "@prisma/client";
+import { BookingStatus, ActivityAction } from "@prisma/client";
 import { logActivity } from "@/services/activity-log.service";
 
 // POST /api/bookings/admin - Create booking (admin only)
@@ -50,9 +50,6 @@ export async function POST(request: NextRequest) {
           pickupLocation: data.pickupLocation,
           dropLocation: data.dropLocation,
           pickupTime: data.pickupTime || null,
-          vehicleType: (data.vehicleType as VehicleType) || null,
-          tripType: (data.tripType as TripType) || null,
-          passengerCount: data.passengerCount ?? null,
           estimatedDistance: data.estimatedDistance ?? null,
           specialRequests: data.specialRequests || null,
           ...(data.status === "CONFIRMED" ? { confirmedAt: new Date() } : {}),
@@ -76,6 +73,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Admin booking creation error:", error);
-    return errorResponse("Failed to create booking", 500);
+    const message = error instanceof Error ? error.message : "Failed to create booking";
+    return errorResponse(message, 500);
   }
 }

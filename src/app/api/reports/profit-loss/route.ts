@@ -45,28 +45,11 @@ export async function GET(request: NextRequest) {
       _count: true,
     });
 
-    // Tax collected from bookings in the period
-    const bookingWhere: Prisma.BookingWhereInput = {
-      status: "CONFIRMED",
-    };
-    if (fromDate || toDate) {
-      bookingWhere.travelDate = {};
-      if (fromDate) bookingWhere.travelDate.gte = new Date(fromDate);
-      if (toDate) bookingWhere.travelDate.lte = new Date(toDate);
-    }
-
-    const taxResult = await prisma.booking.aggregate({
-      where: bookingWhere,
-      _sum: { taxAmount: true },
-    });
-
     const totalIncome = Number(incomeResult._sum.amount || 0);
     const totalRefunds = Number(refundResult._sum.refundedAmount || 0);
     const cancellationFeeIncome = Number(refundResult._sum.cancellationFee || 0);
-    const totalTaxCollected = Number(taxResult._sum.taxAmount || 0);
 
     const netRevenue = totalIncome - totalRefunds;
-    const netRevenueAfterTax = netRevenue - totalTaxCollected;
 
     return successResponse({
       income: {
@@ -77,11 +60,9 @@ export async function GET(request: NextRequest) {
       expenses: {
         totalRefunds,
         refundCount: refundResult._count,
-        totalTaxLiability: totalTaxCollected,
       },
       summary: {
         netRevenue: Math.round(netRevenue),
-        netRevenueAfterTax: Math.round(netRevenueAfterTax),
       },
       filters: {
         fromDate: fromDate || null,

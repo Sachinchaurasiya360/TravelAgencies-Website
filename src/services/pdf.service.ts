@@ -22,13 +22,6 @@ interface InvoiceData {
   serviceDescription: string;
   sacCode: string;
   subtotal: number | string;
-  cgstRate: number | string;
-  sgstRate: number | string;
-  igstRate: number | string;
-  cgstAmount: number | string;
-  sgstAmount: number | string;
-  igstAmount: number | string;
-  totalTax: number | string;
   tollCharges: number | string;
   parkingCharges: number | string;
   driverAllowance: number | string;
@@ -39,7 +32,6 @@ interface InvoiceData {
   amountInWords: string | null;
   amountPaid: number | string;
   balanceDue: number | string;
-  isInterState: boolean;
   termsAndConditions: string | null;
   bankName?: string | null;
   bankAccountNumber?: string | null;
@@ -54,33 +46,43 @@ interface InvoiceData {
   endDateTime?: Date | string | null;
   signatureData?: string | null;
   signedAt?: Date | string | null;
+  dutySlipSignatureData?: string | null;
+  dutySlipSignedAt?: Date | string | null;
 }
 
 export function generateInvoiceHtml(data: InvoiceData): string {
   const invoiceDate = new Date(data.invoiceDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-  const dueDate = data.dueDate
-    ? new Date(data.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
-    : null;
+  const companyNameUpper = data.companyName.toUpperCase();
 
   const hasToll = Number(data.tollCharges) > 0;
   const hasParking = Number(data.parkingCharges) > 0;
   const hasDriverAllowance = Number(data.driverAllowance) > 0;
   const hasExtraCharges = Number(data.extraCharges) > 0;
   const hasDiscount = Number(data.discount) > 0;
-  const hasTax = Number(data.totalTax) > 0;
   const hasBank = !!data.bankName;
-  const hasKmData = data.startKm != null && data.endKm != null;
-  const hasDistanceData = !hasKmData && Number(data.actualDistance || data.estimatedDistance || 0) > 0;
-  const hasTimeData = !!data.startDateTime || !!data.endDateTime;
-  const hasTripDetails = hasKmData || hasDistanceData || hasTimeData;
 
-  // Build additional charges rows
-  const additionalRows: string[] = [];
-  if (hasToll) additionalRows.push(row("FastTag / Toll Charges", formatCurrency(data.tollCharges)));
-  if (hasParking) additionalRows.push(row("Parking Charges", formatCurrency(data.parkingCharges)));
-  if (hasDriverAllowance) additionalRows.push(row("Driver Allowance", formatCurrency(data.driverAllowance)));
-  if (hasExtraCharges) additionalRows.push(row(data.extraChargesNote || "Other Charges", formatCurrency(data.extraCharges)));
-  if (hasDiscount) additionalRows.push(row("Discount", `- ${formatCurrency(data.discount)}`, "#059669"));
+  // Build trip detail parts
+  const tripParts: string[] = [];
+  if (data.startKm != null && data.endKm != null) {
+    tripParts.push(`${Number(data.startKm).toLocaleString("en-IN")} km → ${Number(data.endKm).toLocaleString("en-IN")} km (${(Number(data.endKm) - Number(data.startKm)).toLocaleString("en-IN")} km)`);
+  } else if (Number(data.actualDistance || data.estimatedDistance || 0) > 0) {
+    tripParts.push(`Distance: ${Number(data.actualDistance || data.estimatedDistance).toLocaleString("en-IN")} km`);
+  }
+  if (data.startDateTime) tripParts.push(`Start: ${new Date(data.startDateTime).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`);
+  if (data.endDateTime) tripParts.push(`End: ${new Date(data.endDateTime).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`);
+
+  const tripDetail = tripParts.length > 0
+    ? `<div class="trip-detail">${tripParts.join(" &bull; ")}</div>`
+    : "";
+
+  // Build charge rows for summary
+  const chargeRows: string[] = [];
+  chargeRows.push(summaryRow("Base Fare", formatCurrency(data.subtotal)));
+  if (hasToll) chargeRows.push(summaryRow("FastTag / Toll", formatCurrency(data.tollCharges)));
+  if (hasParking) chargeRows.push(summaryRow("Parking", formatCurrency(data.parkingCharges)));
+  if (hasDriverAllowance) chargeRows.push(summaryRow("Driver Allowance", formatCurrency(data.driverAllowance)));
+  if (hasExtraCharges) chargeRows.push(summaryRow(data.extraChargesNote || "Other Charges", formatCurrency(data.extraCharges)));
+  if (hasDiscount) chargeRows.push(summaryRow("Discount", `- ${formatCurrency(data.discount)}`, "#059669"));
 
   return `<!DOCTYPE html>
 <html>
@@ -94,8 +96,9 @@ export function generateInvoiceHtml(data: InvoiceData): string {
       font-size: 12px;
       color: #1e293b;
       background: #fff;
-      padding: 32px;
-      line-height: 1.5;
+      padding: 48px 32px 32px;
+      line-height: 1.4;
+      max-width: 794px;
     }
 
     /* ---- Header ---- */
@@ -103,137 +106,85 @@ export function generateInvoiceHtml(data: InvoiceData): string {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 20px;
+      padding-bottom: 18px;
       margin-bottom: 24px;
       border-bottom: 3px solid #ea580c;
     }
-    .company-block {}
     .company-name {
-      font-size: 22px;
-      font-weight: 700;
+      font-size: 20px;
+      font-weight: 800;
       color: #ea580c;
-      letter-spacing: -0.3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .company-detail {
-      font-size: 11px;
+      font-size: 10px;
       color: #64748b;
       margin-top: 2px;
-      line-height: 1.6;
-    }
-    .gstin-badge {
-      display: inline-block;
-      margin-top: 6px;
-      font-size: 10px;
-      font-weight: 600;
-      color: #ea580c;
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
-      padding: 2px 8px;
-      border-radius: 4px;
-      letter-spacing: 0.5px;
+      line-height: 1.5;
     }
     .invoice-block { text-align: right; }
     .invoice-title {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 800;
       color: #0f172a;
-      letter-spacing: -0.5px;
       text-transform: uppercase;
-    }
-    .invoice-meta {
-      font-size: 11px;
-      color: #64748b;
-      margin-top: 4px;
-    }
-    .invoice-meta strong {
-      color: #334155;
+      letter-spacing: 1px;
     }
     .invoice-number {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       color: #ea580c;
-      margin-top: 6px;
+      margin-top: 2px;
     }
+    .invoice-meta {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .invoice-meta strong { color: #334155; }
 
-    /* ---- Parties ---- */
-    .parties {
-      display: flex;
-      gap: 24px;
-      margin-bottom: 20px;
-    }
-    .party-card {
-      flex: 1;
+    /* ---- Bill To ---- */
+    .bill-to {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 14px 16px;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 22px;
     }
-    .party-label {
-      font-size: 9px;
+    .bill-to-label {
+      font-size: 8px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: #94a3b8;
-      margin-bottom: 6px;
+      margin-bottom: 3px;
     }
-    .party-name {
-      font-size: 14px;
+    .bill-to-name {
+      font-size: 13px;
       font-weight: 700;
       color: #0f172a;
     }
-    .party-info {
-      font-size: 11px;
+    .bill-to-info {
+      font-size: 10px;
       color: #64748b;
-      margin-top: 3px;
-      line-height: 1.6;
-    }
-
-    /* ---- Trip Details Strip ---- */
-    .trip-strip {
-      display: flex;
-      gap: 0;
-      margin-bottom: 20px;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    .trip-item {
-      flex: 1;
-      padding: 10px 14px;
-      background: #f8fafc;
-      border-right: 1px solid #e2e8f0;
-    }
-    .trip-item:last-child { border-right: none; }
-    .trip-item-label {
-      font-size: 9px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: #94a3b8;
-    }
-    .trip-item-value {
-      font-size: 12px;
-      font-weight: 600;
-      color: #0f172a;
       margin-top: 2px;
+      line-height: 1.5;
     }
 
-    /* ---- Table ---- */
+    /* ---- Service Table ---- */
     .table-wrapper {
-      margin-bottom: 20px;
+      margin-bottom: 22px;
       border: 1px solid #e2e8f0;
-      border-radius: 8px;
+      border-radius: 6px;
       overflow: hidden;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+    table { width: 100%; border-collapse: collapse; }
     thead th {
       background: #0f172a;
       color: #fff;
-      padding: 10px 14px;
-      font-size: 10px;
+      padding: 8px 12px;
+      font-size: 9px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.8px;
@@ -241,12 +192,15 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     }
     thead th.ar { text-align: right; }
     tbody td {
-      padding: 10px 14px;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 12px;
+      padding: 8px 12px;
+      font-size: 11px;
     }
-    tbody tr:last-child td { border-bottom: none; }
     .ar { text-align: right; }
+    .trip-detail {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 3px;
+    }
 
     /* ---- Summary ---- */
     .summary-section {
@@ -255,56 +209,56 @@ export function generateInvoiceHtml(data: InvoiceData): string {
       margin-bottom: 20px;
     }
     .summary-table {
-      width: 340px;
+      width: 300px;
       border: 1px solid #e2e8f0;
-      border-radius: 8px;
+      border-radius: 6px;
       overflow: hidden;
     }
-    .summary-row {
+    .s-row {
       display: flex;
       justify-content: space-between;
-      padding: 8px 14px;
-      font-size: 12px;
+      padding: 6px 12px;
+      font-size: 11px;
       border-bottom: 1px solid #f1f5f9;
     }
-    .summary-row:last-child { border-bottom: none; }
-    .summary-row .label { color: #64748b; }
-    .summary-row .value { font-weight: 600; color: #1e293b; }
-    .summary-grand {
+    .s-row:last-child { border-bottom: none; }
+    .s-row .lbl { color: #64748b; }
+    .s-row .val { font-weight: 600; color: #1e293b; }
+    .s-grand {
       background: #ea580c;
       color: #fff;
-      padding: 12px 14px;
+      padding: 10px 12px;
       display: flex;
       justify-content: space-between;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
     }
-    .summary-balance {
-      background: #fef2f2;
+    .s-paid {
       display: flex;
       justify-content: space-between;
-      padding: 8px 14px;
-      font-weight: 600;
-      font-size: 12px;
-      color: #dc2626;
-    }
-    .summary-paid {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 14px;
-      font-size: 12px;
+      padding: 6px 12px;
+      font-size: 11px;
       color: #059669;
       font-weight: 600;
       border-bottom: 1px solid #f1f5f9;
+    }
+    .s-due {
+      background: #fef2f2;
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 12px;
+      font-weight: 600;
+      font-size: 11px;
+      color: #dc2626;
     }
 
     /* ---- Amount in Words ---- */
     .amount-words {
       background: #fffbeb;
       border: 1px solid #fde68a;
-      border-radius: 6px;
-      padding: 10px 14px;
-      font-size: 11px;
+      border-radius: 4px;
+      padding: 6px 12px;
+      font-size: 10px;
       font-style: italic;
       color: #92400e;
       margin-bottom: 20px;
@@ -314,109 +268,99 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     /* ---- Bank Details ---- */
     .bank-card {
       border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 14px 16px;
+      border-radius: 6px;
+      padding: 12px 14px;
       margin-bottom: 20px;
       background: #f8fafc;
     }
     .bank-title {
-      font-size: 10px;
+      font-size: 8px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.8px;
       color: #64748b;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .bank-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 6px 24px;
+      gap: 4px 20px;
     }
-    .bank-item-label {
-      font-size: 10px;
-      color: #94a3b8;
-    }
-    .bank-item-value {
-      font-size: 12px;
-      font-weight: 600;
-      color: #1e293b;
-    }
+    .bank-lbl { font-size: 9px; color: #94a3b8; }
+    .bank-val { font-size: 11px; font-weight: 600; color: #1e293b; }
 
     /* ---- Signatures ---- */
     .signatures {
       display: flex;
       justify-content: space-between;
-      margin-top: 36px;
-      padding-top: 20px;
+      margin-top: 28px;
+      padding-top: 16px;
     }
-    .sig-box {
-      text-align: center;
-      width: 44%;
-    }
+    .sig-box { text-align: center; width: 44%; }
     .sig-area {
-      height: 72px;
+      height: 56px;
       border-bottom: 2px solid #cbd5e1;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       display: flex;
       align-items: flex-end;
       justify-content: center;
     }
     .sig-label {
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 600;
       color: #64748b;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     .sig-date {
-      font-size: 9px;
+      font-size: 8px;
       color: #059669;
-      margin-top: 3px;
+      margin-top: 2px;
       font-weight: 500;
     }
     .sig-company {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
       color: #ea580c;
       font-style: italic;
       padding-bottom: 4px;
+      text-transform: uppercase;
     }
 
     /* ---- Terms ---- */
     .terms {
-      margin-top: 24px;
-      padding-top: 14px;
+      margin-top: 20px;
+      padding-top: 12px;
       border-top: 1px solid #e2e8f0;
     }
     .terms-title {
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.8px;
       color: #94a3b8;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
     .terms-text {
-      font-size: 10px;
+      font-size: 9px;
       color: #94a3b8;
-      line-height: 1.6;
+      line-height: 1.5;
       white-space: pre-line;
     }
 
-    /* ---- Thank You ---- */
-    .thank-you {
+    /* ---- Footer ---- */
+    .footer {
       text-align: center;
       margin-top: 24px;
-      padding-top: 16px;
+      padding-top: 14px;
       border-top: 2px solid #ea580c;
-      font-size: 12px;
+      font-size: 11px;
       color: #64748b;
-      font-weight: 500;
     }
-    .thank-you strong { color: #ea580c; }
+    .footer strong { color: #ea580c; }
 
     @media print {
-      body { padding: 16px; }
+      body { padding: 12px; }
       .no-print { display: none !important; }
     }
   </style>
@@ -425,97 +369,48 @@ export function generateInvoiceHtml(data: InvoiceData): string {
 
   <!-- Header -->
   <div class="header">
-    <div class="company-block">
-      <div class="company-name">${data.companyName}</div>
+    <div>
+      <div class="company-name">${companyNameUpper}</div>
       <div class="company-detail">
         ${data.companyAddress}
         ${data.companyPhone ? `<br>Phone: ${data.companyPhone}` : ""}
-        ${data.companyEmail ? `&nbsp;&nbsp;|&nbsp;&nbsp;Email: ${data.companyEmail}` : ""}
+        ${data.companyEmail ? ` | Email: ${data.companyEmail}` : ""}
         ${data.companyState ? `<br>State: ${data.companyState}${data.companyStateCode ? ` (${data.companyStateCode})` : ""}` : ""}
       </div>
-      ${data.companyGstin ? `<div class="gstin-badge">GSTIN: ${data.companyGstin}</div>` : ""}
     </div>
     <div class="invoice-block">
       <div class="invoice-title">Invoice</div>
       <div class="invoice-number">${data.invoiceNumber}</div>
-      <div class="invoice-meta">
-        <strong>Date:</strong> ${invoiceDate}
-        ${dueDate ? `<br><strong>Due:</strong> ${dueDate}` : ""}
-      </div>
+      <div class="invoice-meta"><strong>Date:</strong> ${invoiceDate}</div>
     </div>
   </div>
 
-  <!-- Bill To / Company -->
-  <div class="parties">
-    <div class="party-card">
-      <div class="party-label">Bill To</div>
-      <div class="party-name">${data.customerName}</div>
-      <div class="party-info">
-        ${data.customerAddress ? `${data.customerAddress}<br>` : ""}
-        Phone: ${data.customerPhone}
-        ${data.customerEmail ? `<br>Email: ${data.customerEmail}` : ""}
-        ${data.customerGstin ? `<br>GSTIN: ${data.customerGstin}` : ""}
-      </div>
-    </div>
-    <div class="party-card">
-      <div class="party-label">From</div>
-      <div class="party-name">${data.companyName}</div>
-      <div class="party-info">
-        ${data.companyAddress}
-        ${data.companyGstin ? `<br>GSTIN: ${data.companyGstin}` : ""}
-      </div>
+  <!-- Bill To -->
+  <div class="bill-to">
+    <div class="bill-to-label">Bill To</div>
+    <div class="bill-to-name">${data.customerName}</div>
+    <div class="bill-to-info">
+      ${data.customerAddress ? `${data.customerAddress}<br>` : ""}Phone: ${data.customerPhone}${data.customerEmail ? ` | Email: ${data.customerEmail}` : ""}
     </div>
   </div>
-
-  <!-- Trip Details -->
-  ${hasTripDetails ? `
-  <div class="trip-strip">
-    ${hasKmData ? `
-    <div class="trip-item">
-      <div class="trip-item-label">Start KM</div>
-      <div class="trip-item-value">${Number(data.startKm).toLocaleString("en-IN")}</div>
-    </div>
-    <div class="trip-item">
-      <div class="trip-item-label">End KM</div>
-      <div class="trip-item-value">${Number(data.endKm).toLocaleString("en-IN")}</div>
-    </div>
-    <div class="trip-item">
-      <div class="trip-item-label">Total Distance</div>
-      <div class="trip-item-value">${(Number(data.endKm) - Number(data.startKm)).toLocaleString("en-IN")} km</div>
-    </div>` : ""}
-    ${hasDistanceData ? `
-    <div class="trip-item">
-      <div class="trip-item-label">Total Distance</div>
-      <div class="trip-item-value">${Number(data.actualDistance || data.estimatedDistance).toLocaleString("en-IN")} km</div>
-    </div>` : ""}
-    ${data.startDateTime ? `
-    <div class="trip-item">
-      <div class="trip-item-label">Start Time</div>
-      <div class="trip-item-value">${new Date(data.startDateTime).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</div>
-    </div>` : ""}
-    ${data.endDateTime ? `
-    <div class="trip-item">
-      <div class="trip-item-label">End Time</div>
-      <div class="trip-item-value">${new Date(data.endDateTime).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</div>
-    </div>` : ""}
-  </div>` : ""}
 
   <!-- Service Table -->
   <div class="table-wrapper">
     <table>
       <thead>
         <tr>
-          <th style="width: 36px;">#</th>
-          <th>Service Description</th>
-          <th style="width: 80px;">SAC</th>
-          <th class="ar" style="width: 120px;">Amount</th>
+          <th style="width: 32px;">#</th>
+          <th>Description</th>
+          <th class="ar" style="width: 110px;">Amount</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td>1</td>
-          <td>${data.serviceDescription}</td>
-          <td>${data.sacCode}</td>
+          <td>
+            ${data.serviceDescription}
+            ${tripDetail}
+          </td>
           <td class="ar" style="font-weight: 600;">${formatCurrency(data.subtotal)}</td>
         </tr>
       </tbody>
@@ -525,37 +420,18 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   <!-- Summary -->
   <div class="summary-section">
     <div class="summary-table">
-      <div class="summary-row">
-        <span class="label">Subtotal</span>
-        <span class="value">${formatCurrency(data.subtotal)}</span>
-      </div>
-      ${hasTax ? (
-        !data.isInterState
-          ? `<div class="summary-row">
-              <span class="label">CGST @ ${data.cgstRate}%</span>
-              <span class="value">${formatCurrency(data.cgstAmount)}</span>
-            </div>
-            <div class="summary-row">
-              <span class="label">SGST @ ${data.sgstRate}%</span>
-              <span class="value">${formatCurrency(data.sgstAmount)}</span>
-            </div>`
-          : `<div class="summary-row">
-              <span class="label">IGST @ ${data.igstRate}%</span>
-              <span class="value">${formatCurrency(data.igstAmount)}</span>
-            </div>`
-      ) : ""}
-      ${additionalRows.join("")}
-      <div class="summary-grand">
+      ${chargeRows.join("")}
+      <div class="s-grand">
         <span>Grand Total</span>
         <span>${formatCurrency(data.grandTotal)}</span>
       </div>
       ${Number(data.amountPaid) > 0 ? `
-      <div class="summary-paid">
+      <div class="s-paid">
         <span>Amount Paid</span>
         <span>${formatCurrency(data.amountPaid)}</span>
       </div>` : ""}
       ${Number(data.balanceDue) > 0 ? `
-      <div class="summary-balance">
+      <div class="s-due">
         <span>Balance Due</span>
         <span>${formatCurrency(data.balanceDue)}</span>
       </div>` : ""}
@@ -573,48 +449,16 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   <div class="bank-card">
     <div class="bank-title">Bank Details</div>
     <div class="bank-grid">
-      <div>
-        <div class="bank-item-label">Bank Name</div>
-        <div class="bank-item-value">${data.bankName}</div>
-      </div>
-      <div>
-        <div class="bank-item-label">Account Name</div>
-        <div class="bank-item-value">${data.bankAccountName || "-"}</div>
-      </div>
-      <div>
-        <div class="bank-item-label">Account Number</div>
-        <div class="bank-item-value">${data.bankAccountNumber || "-"}</div>
-      </div>
-      <div>
-        <div class="bank-item-label">IFSC Code</div>
-        <div class="bank-item-value">${data.bankIfscCode || "-"}</div>
-      </div>
-      ${data.upiId ? `
-      <div>
-        <div class="bank-item-label">UPI ID</div>
-        <div class="bank-item-value">${data.upiId}</div>
-      </div>` : ""}
+      <div><div class="bank-lbl">Bank Name</div><div class="bank-val">${data.bankName}</div></div>
+      <div><div class="bank-lbl">Account Name</div><div class="bank-val">${data.bankAccountName || "-"}</div></div>
+      <div><div class="bank-lbl">Account Number</div><div class="bank-val">${data.bankAccountNumber || "-"}</div></div>
+      <div><div class="bank-lbl">IFSC Code</div><div class="bank-val">${data.bankIfscCode || "-"}</div></div>
+      ${data.upiId ? `<div><div class="bank-lbl">UPI ID</div><div class="bank-val">${data.upiId}</div></div>` : ""}
     </div>
   </div>` : ""}
 
   <!-- Signatures -->
-  <div class="signatures">
-    <div class="sig-box">
-      <div class="sig-area">
-        ${data.signatureData && data.signatureData.startsWith("data:image/")
-          ? `<img src="${data.signatureData.replace(/"/g, "&quot;")}" alt="Customer Signature" style="max-width: 180px; max-height: 64px;" />`
-          : ""}
-      </div>
-      <div class="sig-label">Customer Signature</div>
-      ${data.signedAt ? `<div class="sig-date">Signed on ${new Date(data.signedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>` : ""}
-    </div>
-    <div class="sig-box">
-      <div class="sig-area">
-        <div class="sig-company">${data.companyName}</div>
-      </div>
-      <div class="sig-label">Authorized Signatory</div>
-    </div>
-  </div>
+  ${renderSignatures(data, companyNameUpper)}
 
   <!-- Terms -->
   ${data.termsAndConditions ? `
@@ -623,18 +467,44 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     <div class="terms-text">${data.termsAndConditions}</div>
   </div>` : ""}
 
-  <!-- Thank You -->
-  <div class="thank-you">
-    Thank you for choosing <strong>${data.companyName}</strong>
+  <!-- Footer -->
+  <div class="footer">
+    Thank you for choosing <strong>${companyNameUpper}</strong>
   </div>
 
 </body>
 </html>`;
 }
 
-function row(label: string, value: string, color?: string): string {
-  return `<div class="summary-row">
-    <span class="label">${label}</span>
-    <span class="value"${color ? ` style="color:${color}"` : ""}>${value}</span>
+function renderSignatures(data: InvoiceData, companyNameUpper: string): string {
+  const sig = data.dutySlipSignatureData || data.signatureData;
+  const sigDate = data.dutySlipSignedAt || data.signedAt;
+
+  const sigImg = sig && sig.startsWith("data:image/")
+    ? `<img src="${sig.replace(/"/g, "&quot;")}" alt="Customer Signature" style="max-width: 160px; max-height: 50px;" />`
+    : "";
+  const sigDateStr = sigDate
+    ? `<div class="sig-date">Signed on ${new Date(sigDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</div>`
+    : "";
+
+  return `<div class="signatures">
+    <div class="sig-box">
+      <div class="sig-area">${sigImg}</div>
+      <div class="sig-label">Customer Signature</div>
+      ${sigDateStr}
+    </div>
+    <div class="sig-box">
+      <div class="sig-area">
+        <div class="sig-company">${companyNameUpper}</div>
+      </div>
+      <div class="sig-label">Authorized Signatory</div>
+    </div>
+  </div>`;
+}
+
+function summaryRow(label: string, value: string, color?: string): string {
+  return `<div class="s-row">
+    <span class="lbl">${label}</span>
+    <span class="val"${color ? ` style="color:${color}"` : ""}>${value}</span>
   </div>`;
 }

@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { InvoiceStatus, ActivityAction } from "@prisma/client";
-import { calculateGst } from "@/lib/helpers/gst";
 import { amountToWords } from "@/lib/helpers/currency";
 import { successResponse, errorResponse } from "@/lib/api-helpers";
 import { logActivity } from "@/services/activity-log.service";
@@ -38,33 +37,12 @@ export async function POST(
     }
 
     const subtotal = Number(booking.baseFare);
-    const includeGst = booking.includeGst;
-    const gst = includeGst
-      ? calculateGst(subtotal, false)
-      : {
-          subtotal,
-          cgstRate: 0,
-          sgstRate: 0,
-          igstRate: 0,
-          cgstAmount: 0,
-          sgstAmount: 0,
-          igstAmount: 0,
-          totalTax: 0,
-        };
-
     const tollCharges = Number(booking.tollCharges || 0);
     const parkingCharges = Number(booking.parkingCharges || 0);
     const driverAllowance = Number(booking.driverAllowance || 0);
     const extraCharges = Number(booking.extraCharges || 0);
     const discount = Number(booking.discount || 0);
-    const grandTotal =
-      subtotal +
-      gst.totalTax +
-      tollCharges +
-      parkingCharges +
-      driverAllowance +
-      extraCharges -
-      discount;
+    const grandTotal = subtotal + tollCharges + parkingCharges + driverAllowance + extraCharges - discount;
 
     const dueDate = new Date(
       Date.now() +
@@ -138,13 +116,13 @@ export async function POST(
           sacCode: settings.defaultSacCode || "9964",
 
           subtotal,
-          cgstRate: gst.cgstRate,
-          sgstRate: gst.sgstRate,
-          igstRate: gst.igstRate,
-          cgstAmount: gst.cgstAmount,
-          sgstAmount: gst.sgstAmount,
-          igstAmount: gst.igstAmount,
-          totalTax: gst.totalTax,
+          cgstRate: 0,
+          sgstRate: 0,
+          igstRate: 0,
+          cgstAmount: 0,
+          sgstAmount: 0,
+          igstAmount: 0,
+          totalTax: 0,
           tollCharges,
           parkingCharges,
           driverAllowance,

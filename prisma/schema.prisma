@@ -23,23 +23,6 @@ enum BookingStatus {
   CANCELLED
 }
 
-// Kept for backward compatibility with existing records
-enum VehicleType {
-  CAR_SEDAN
-  CAR_SUV
-  CAR_HATCHBACK
-  CAR_LUXURY
-  TEMPO_TRAVELLER
-  MINI_BUS
-  BUS
-  OTHER
-}
-
-// Kept for backward compatibility with existing records
-enum TripType {
-  ONE_WAY
-  ROUND_TRIP
-}
 
 enum PaymentStatus {
   PENDING
@@ -107,6 +90,11 @@ enum ExpenseCategory {
   OTHER
 }
 
+enum DutySlipStatus {
+  PENDING
+  SUBMITTED
+}
+
 enum ActivityAction {
   BOOKING_CREATED
   BOOKING_UPDATED
@@ -135,6 +123,8 @@ enum ActivityAction {
   VENDOR_UPDATED
   VENDOR_DELETED
   DRIVER_LINK_GENERATED
+  DUTY_SLIP_CREATED
+  DUTY_SLIP_SUBMITTED
 }
 
 // ============================================================
@@ -153,12 +143,27 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  vehicleName    String?
+  vehicleNumber  String?
+
   activityLogs   ActivityLog[]
   bookingNotes   BookingNote[]
   expenses       Expense[]
   driverBookings Booking[]    @relation("DriverBookings")
+  dutySlips      DutySlip[]   @relation("DriverDutySlips")
 
   @@map("users")
+}
+
+model LoginOtp {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@map("login_otps")
 }
 
 model Customer {
@@ -204,10 +209,7 @@ model Booking {
   vendor     Vendor?   @relation(fields: [vendorId], references: [id])
   vendorCost Decimal?  @db.Decimal(12, 0)
 
-  tripType          TripType?
-  vehicleType       VehicleType?
   vehiclePreference String?
-  passengerCount    Int?
   travelDate        DateTime
   returnDate        DateTime?
   pickupLocation    String
@@ -222,7 +224,6 @@ model Booking {
   startDateTime     DateTime?
   endDateTime       DateTime?
   specialRequests   String?
-  passengerDetails  Json?
 
   baseFare         Decimal? @db.Decimal(12, 0)
   taxAmount        Decimal? @db.Decimal(12, 0)
@@ -257,6 +258,7 @@ model Booking {
   refunds       Refund[]
   notifications NotificationLog[]
   notes         BookingNote[]
+  dutySlip      DutySlip?
 
   @@index([customerId])
   @@index([driverId])
@@ -279,6 +281,52 @@ model BookingNote {
 
   @@index([bookingId])
   @@map("booking_notes")
+}
+
+model DutySlip {
+  id     String         @id @default(cuid())
+  status DutySlipStatus @default(PENDING)
+
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  driverId String?
+  driver   User?  @relation("DriverDutySlips", fields: [driverId], references: [id])
+
+  // Snapshots at creation
+  vehicleName   String?
+  vehicleNumber String?
+  guestName     String
+
+  // KM readings
+  officeStartKm          Float?
+  officeStartDateTime    DateTime?
+  customerPickupKm       Float?
+  customerPickupDateTime String?
+  customerDropKm         Float?
+  customerDropDateTime   String?
+  customerEndKm          Float?
+  customerEndDateTime    DateTime?
+
+  // Expenses
+  tollAmount        Decimal? @db.Decimal(12, 0)
+  parkingAmount     Decimal? @db.Decimal(12, 0)
+  otherChargeName   String?
+  otherChargeAmount Decimal? @db.Decimal(12, 0)
+
+  // Signature
+  signatureData String?   @db.Text
+  signedAt      DateTime?
+  submittedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([driverId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("duty_slips")
 }
 
 model Invoice {

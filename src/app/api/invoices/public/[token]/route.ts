@@ -48,8 +48,9 @@ export async function GET(
             pickupLocation: true,
             dropLocation: true,
             travelDate: true,
-            vehicleType: true,
-            tripType: true,
+            dutySlip: {
+              select: { signatureData: true, signedAt: true },
+            },
           },
         },
       },
@@ -72,10 +73,6 @@ export async function GET(
     return successResponse({
       ...invoice,
       subtotal: Number(invoice.subtotal),
-      cgstAmount: Number(invoice.cgstAmount),
-      sgstAmount: Number(invoice.sgstAmount),
-      igstAmount: Number(invoice.igstAmount),
-      totalTax: Number(invoice.totalTax),
       tollCharges: Number(invoice.tollCharges),
       parkingCharges: Number(invoice.parkingCharges),
       driverAllowance: Number(invoice.driverAllowance),
@@ -85,6 +82,8 @@ export async function GET(
       amountPaid: Number(invoice.amountPaid),
       balanceDue: Number(invoice.balanceDue),
       bankDetails: settings,
+      dutySlipSignatureData: invoice.booking.dutySlip?.signatureData || null,
+      dutySlipSignedAt: invoice.booking.dutySlip?.signedAt || null,
     });
   } catch (error) {
     console.error("Public invoice error:", error);

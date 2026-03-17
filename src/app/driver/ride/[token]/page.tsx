@@ -6,13 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { formatCurrency } from "@/lib/helpers/currency";
@@ -23,23 +16,43 @@ import {
   Clock,
   User,
   Phone,
-  IndianRupee,
-  FileText,
   CheckCircle,
   Car,
   Route,
-  Users,
-  Share2,
-  Plus,
-  Pencil,
+
   PenTool,
   RotateCcw,
   Send,
+  ClipboardList,
+  Gauge,
+  Receipt,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/language-context";
 import { interpolate } from "@/lib/i18n";
-import { getStatusLabel, getPaymentMethodLabel } from "@/lib/i18n/label-maps";
-import { downloadInvoicePdf } from "@/lib/helpers/download-pdf";
+import { getStatusLabel } from "@/lib/i18n/label-maps";
+
+interface DutySlipData {
+  id: string;
+  status: string;
+  guestName: string;
+  vehicleName: string | null;
+  vehicleNumber: string | null;
+  officeStartKm: number | null;
+  officeStartDateTime: string | null;
+  customerPickupKm: number | null;
+  customerPickupDateTime: string | null;
+  customerDropKm: number | null;
+  customerDropDateTime: string | null;
+  customerEndKm: number | null;
+  customerEndDateTime: string | null;
+  tollAmount: string | null;
+  parkingAmount: string | null;
+  otherChargeName: string | null;
+  otherChargeAmount: string | null;
+  signatureData: string | null;
+  signedAt: string | null;
+  submittedAt: string | null;
+}
 
 interface BookingDetail {
   id: string;
@@ -53,48 +66,26 @@ interface BookingDetail {
   dropLocation: string;
   dropAddress: string | null;
   estimatedDistance: number | null;
-  actualDistance: number | null;
-  startKm: number | null;
-  endKm: number | null;
-  startDateTime: string | null;
-  endDateTime: string | null;
-  vehicleType: string | null;
-  vehiclePreference: string | null;
-  passengerCount: number | null;
   specialRequests: string | null;
-  tripType: string | null;
-  baseFare: string | null;
-  taxAmount: string | null;
-  tollCharges: string | null;
-  parkingCharges: string | null;
-  driverAllowance: string | null;
-  extraCharges: string | null;
-  extraChargesNote: string | null;
-  discount: string | null;
-  totalAmount: string | null;
-  includeGst: boolean;
-  paymentStatus: string;
   customer: {
     name: string;
     phone: string;
     email: string | null;
   };
-  invoices: {
+  driver: {
     id: string;
-    invoiceNumber: string;
-    status: string;
-    grandTotal: string;
-    signedAt: string | null;
-    shareToken: string | null;
-  }[];
-  payments: {
+    name: string;
+    phone: string | null;
+    vehicleName: string | null;
+    vehicleNumber: string | null;
+  } | null;
+  vendor: {
     id: string;
-    receiptNumber: string;
-    amount: string;
-    method: string;
-    paymentDate: string;
-    isAdvance: boolean;
-  }[];
+    name: string;
+    phone: string;
+  } | null;
+  carSource: string;
+  dutySlip: DutySlipData | null;
 }
 
 export default function DriverRidePage({
@@ -107,52 +98,30 @@ export default function DriverRidePage({
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Pricing form
-  const [pricingOpen, setPricingOpen] = useState(false);
-  const [pricing, setPricing] = useState({
-    actualDistance: "",
-    baseFare: "",
-    tollCharges: "0",
-    parkingCharges: "0",
-    driverAllowance: "0",
-    extraCharges: "0",
-    extraChargesNote: "",
-    discount: "0",
-    includeGst: false,
-    startKm: "",
-    endKm: "",
-    startDateTime: "",
-    endDateTime: "",
+  // Duty slip form state
+  const [dutySlipForm, setDutySlipForm] = useState({
+    officeStartKm: "",
+    officeStartDateTime: "",
+    customerPickupKm: "",
+    customerPickupDateTime: "",
+    customerDropKm: "",
+    customerDropDateTime: "",
+    customerEndKm: "",
+    customerEndDateTime: "",
+    tollAmount: "",
+    parkingAmount: "",
+    otherChargeName: "",
+    otherChargeAmount: "",
   });
-  const [pricingLoading, setPricingLoading] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [dutySlipSubmitting, setDutySlipSubmitting] = useState(false);
 
-  // Payment form
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [paymentForm, setPaymentForm] = useState({
-    amount: "",
-    method: "CASH" as "CASH" | "ONLINE",
-    isAdvance: false,
-    transactionRef: "",
-    notes: "",
-  });
-  const [paymentLoading, setPaymentLoading] = useState(false);
-
-  // Bill generation & sharing
-  const [billLoading, setBillLoading] = useState(false);
-  const [shareLoading, setShareLoading] = useState(false);
-  const [downloadLoading, setDownloadLoading] = useState(false);
-
-  // Signature panel
-  const [signatureOpen, setSignatureOpen] = useState(false);
-  const [signatureToken, setSignatureToken] = useState<string | null>(null);
-  const [signatureInvoiceId, setSignatureInvoiceId] = useState<string | null>(
-    null
-  );
-  const [hasDrawn, setHasDrawn] = useState(false);
-  const [signing, setSigning] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isDrawingRef = useRef(false);
-  const signatureSectionRef = useRef<HTMLDivElement>(null);
+  // Customer signature
+  const [dutySignatureOpen, setDutySignatureOpen] = useState(false);
+  const [dutyHasDrawn, setDutyHasDrawn] = useState(false);
+  const dutyCanvasRef = useRef<HTMLCanvasElement>(null);
+  const dutyIsDrawingRef = useRef(false);
+  const dutySignatureSectionRef = useRef<HTMLDivElement>(null);
 
   const fetchBooking = useCallback(async () => {
     try {
@@ -160,6 +129,24 @@ export default function DriverRidePage({
       const result = await res.json();
       if (result.success) {
         setBooking(result.data);
+        // Populate duty slip form from existing data
+        const ds = result.data.dutySlip;
+        if (ds) {
+          setDutySlipForm({
+            officeStartKm: ds.officeStartKm?.toString() || "",
+            officeStartDateTime: "",
+            customerPickupKm: ds.customerPickupKm?.toString() || "",
+            customerPickupDateTime: ds.customerPickupDateTime || "",
+            customerDropKm: ds.customerDropKm?.toString() || "",
+            customerDropDateTime: ds.customerDropDateTime || "",
+            customerEndKm: ds.customerEndKm?.toString() || "",
+            customerEndDateTime: "",
+            tollAmount: ds.tollAmount?.toString() || "",
+            parkingAmount: ds.parkingAmount?.toString() || "",
+            otherChargeName: ds.otherChargeName || "",
+            otherChargeAmount: ds.otherChargeAmount?.toString() || "",
+          });
+        }
       } else {
         toast.error(result.error || t.driver.fetchFailed);
       }
@@ -174,10 +161,10 @@ export default function DriverRidePage({
     fetchBooking();
   }, [fetchBooking]);
 
-  // Canvas drawing setup
+  // Customer signature canvas setup
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !signatureOpen) return;
+    const canvas = dutyCanvasRef.current;
+    if (!canvas || !dutySignatureOpen) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -195,28 +182,21 @@ export default function DriverRidePage({
       const r = canvas!.getBoundingClientRect();
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     }
-
     function startDraw(e: MouseEvent | TouchEvent) {
-      isDrawingRef.current = true;
-      const pos =
-        e instanceof MouseEvent ? getPos(e) : getPos(e.touches[0]);
+      dutyIsDrawingRef.current = true;
+      const pos = e instanceof MouseEvent ? getPos(e) : getPos(e.touches[0]);
       ctx!.beginPath();
       ctx!.moveTo(pos.x, pos.y);
     }
-
     function draw(e: MouseEvent | TouchEvent) {
-      if (!isDrawingRef.current) return;
+      if (!dutyIsDrawingRef.current) return;
       e.preventDefault();
-      const pos =
-        e instanceof MouseEvent ? getPos(e) : getPos(e.touches[0]);
+      const pos = e instanceof MouseEvent ? getPos(e) : getPos(e.touches[0]);
       ctx!.lineTo(pos.x, pos.y);
       ctx!.stroke();
-      setHasDrawn(true);
+      setDutyHasDrawn(true);
     }
-
-    function stopDraw() {
-      isDrawingRef.current = false;
-    }
+    function stopDraw() { dutyIsDrawingRef.current = false; }
 
     canvas.addEventListener("mousedown", startDraw);
     canvas.addEventListener("mousemove", draw);
@@ -235,250 +215,89 @@ export default function DriverRidePage({
       canvas.removeEventListener("touchmove", draw);
       canvas.removeEventListener("touchend", stopDraw);
     };
-  }, [signatureOpen]);
+  }, [dutySignatureOpen]);
 
-  function clearCanvas() {
-    const canvas = canvasRef.current;
+  function clearDutyCanvas() {
+    const canvas = dutyCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasDrawn(false);
+    setDutyHasDrawn(false);
   }
 
-  async function getShareToken(
-    invoiceId: string
-  ): Promise<string | null> {
+  // Build duty slip payload from form state
+  function buildDutySlipPayload(): Record<string, unknown> {
+    const payload: Record<string, unknown> = {};
+    if (dutySlipForm.officeStartKm !== "") payload.officeStartKm = parseFloat(dutySlipForm.officeStartKm);
+    if (dutySlipForm.customerPickupKm !== "") payload.customerPickupKm = parseFloat(dutySlipForm.customerPickupKm);
+    if (dutySlipForm.customerPickupDateTime) payload.customerPickupDateTime = dutySlipForm.customerPickupDateTime;
+    if (dutySlipForm.customerDropKm !== "") payload.customerDropKm = parseFloat(dutySlipForm.customerDropKm);
+    if (dutySlipForm.customerDropDateTime) payload.customerDropDateTime = dutySlipForm.customerDropDateTime;
+    if (dutySlipForm.customerEndKm !== "") payload.customerEndKm = parseFloat(dutySlipForm.customerEndKm);
+    if (dutySlipForm.tollAmount !== "") payload.tollAmount = parseFloat(dutySlipForm.tollAmount);
+    if (dutySlipForm.parkingAmount !== "") payload.parkingAmount = parseFloat(dutySlipForm.parkingAmount);
+    if (dutySlipForm.otherChargeName) payload.otherChargeName = dutySlipForm.otherChargeName;
+    if (dutySlipForm.otherChargeAmount !== "") payload.otherChargeAmount = parseFloat(dutySlipForm.otherChargeAmount);
+    return payload;
+  }
+
+  // Duty slip: save draft
+  async function handleSaveDutyDraft() {
+    setDraftSaving(true);
     try {
-      const res = await fetch(`/api/driver/ride/${token}/share`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        return result.data.shareToken;
-      }
-      toast.error(result.error || t.driver.signaturePrepFailed);
-      return null;
-    } catch {
-      toast.error(t.driver.signaturePrepFailed);
-      return null;
-    }
-  }
+      const payload = buildDutySlipPayload();
 
-  async function openSignaturePanel(
-    invoiceId: string,
-    existingToken?: string | null
-  ) {
-    if (existingToken) {
-      setSignatureToken(existingToken);
-      setSignatureInvoiceId(invoiceId);
-      setSignatureOpen(true);
-      setHasDrawn(false);
-      setTimeout(
-        () =>
-          signatureSectionRef.current?.scrollIntoView({
-            behavior: "smooth",
-          }),
-        100
-      );
-      return;
-    }
-    const shareToken = await getShareToken(invoiceId);
-    if (shareToken) {
-      setSignatureToken(shareToken);
-      setSignatureInvoiceId(invoiceId);
-      setSignatureOpen(true);
-      setHasDrawn(false);
-      await fetchBooking();
-      setTimeout(
-        () =>
-          signatureSectionRef.current?.scrollIntoView({
-            behavior: "smooth",
-          }),
-        100
-      );
-    }
-  }
-
-  async function handleSubmitSignature() {
-    const canvas = canvasRef.current;
-    if (!canvas || !hasDrawn || !signatureToken) return;
-
-    setSigning(true);
-    try {
-      const signatureData = canvas.toDataURL("image/png");
-      const res = await fetch("/api/invoices/sign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: signatureToken, signatureData }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success(t.driver.signatureSuccess);
-        setSignatureOpen(false);
-        setSignatureToken(null);
-        setSignatureInvoiceId(null);
-        setHasDrawn(false);
-        await fetchBooking();
-      } else {
-        toast.error(result.error || t.driver.signaturePrepFailed);
-      }
-    } catch {
-      toast.error(t.driver.signaturePrepFailed);
-    } finally {
-      setSigning(false);
-    }
-  }
-
-  async function handlePricingSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setPricingLoading(true);
-    try {
-      const res = await fetch(`/api/driver/ride/${token}/pricing`, {
+      const res = await fetch(`/api/driver/ride/${token}/duty-slip`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          actualDistance: parseFloat(pricing.actualDistance) || undefined,
-          baseFare: parseFloat(pricing.baseFare),
-          tollCharges: parseFloat(pricing.tollCharges) || 0,
-          parkingCharges: parseFloat(pricing.parkingCharges) || 0,
-          driverAllowance: parseFloat(pricing.driverAllowance) || 0,
-          extraCharges: parseFloat(pricing.extraCharges) || 0,
-          extraChargesNote: pricing.extraChargesNote || undefined,
-          discount: parseFloat(pricing.discount) || 0,
-          includeGst: pricing.includeGst,
-          ...(pricing.startKm && { startKm: parseFloat(pricing.startKm) }),
-          ...(pricing.endKm && { endKm: parseFloat(pricing.endKm) }),
-          ...(pricing.startDateTime && { startDateTime: pricing.startDateTime }),
-          ...(pricing.endDateTime && { endDateTime: pricing.endDateTime }),
-        }),
+        body: JSON.stringify(payload),
       });
       const result = await res.json();
       if (result.success) {
-        toast.success(t.driver.pricingSaved);
+        toast.success(t.dutySlip.draftSaved);
         await fetchBooking();
-        setPricingOpen(false);
       } else {
-        toast.error(result.error);
+        toast.error(result.error || t.dutySlip.draftFailed);
       }
     } catch {
-      toast.error(t.driver.pricingSaved);
+      toast.error(t.dutySlip.draftFailed);
     } finally {
-      setPricingLoading(false);
+      setDraftSaving(false);
     }
   }
 
-  async function handleRecordPayment(e: React.FormEvent) {
-    e.preventDefault();
-    setPaymentLoading(true);
+  // Duty slip: submit with customer signature
+  async function handleSubmitDutySlip() {
+    const canvas = dutyCanvasRef.current;
+    if (!canvas || !dutyHasDrawn) {
+      toast.error(t.dutySlip.signatureRequired);
+      return;
+    }
+
+    setDutySlipSubmitting(true);
     try {
-      const res = await fetch(`/api/driver/ride/${token}/payment`, {
+      const signatureData = canvas.toDataURL("image/png");
+      const payload: Record<string, unknown> = { signatureData, ...buildDutySlipPayload() };
+
+      const res = await fetch(`/api/driver/ride/${token}/duty-slip`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: parseFloat(paymentForm.amount),
-          method: paymentForm.method,
-          isAdvance: paymentForm.isAdvance,
-          transactionRef: paymentForm.transactionRef || undefined,
-          notes: paymentForm.notes || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const result = await res.json();
       if (result.success) {
-        toast.success(t.driver.paymentRecorded);
+        toast.success(t.dutySlip.submitSuccess);
+        setDutySignatureOpen(false);
+        setDutyHasDrawn(false);
         await fetchBooking();
-        setPaymentOpen(false);
-        setPaymentForm({
-          amount: "",
-          method: "CASH",
-          isAdvance: false,
-          transactionRef: "",
-          notes: "",
-        });
       } else {
-        toast.error(result.error || t.driver.paymentRecorded);
+        toast.error(result.error || t.dutySlip.submitFailed);
       }
     } catch {
-      toast.error(t.driver.paymentRecorded);
+      toast.error(t.dutySlip.submitFailed);
     } finally {
-      setPaymentLoading(false);
-    }
-  }
-
-  async function handleGenerateBill() {
-    setBillLoading(true);
-    try {
-      const res = await fetch(`/api/driver/ride/${token}/invoice`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const result = await res.json();
-      if (!result.success) {
-        toast.error(result.error || t.driver.billFailed);
-        return;
-      }
-
-      const invoiceId = result.data.id;
-      toast.success(t.driver.billGenerated);
-
-      const shareToken = await getShareToken(invoiceId);
-      await fetchBooking();
-
-      if (shareToken) {
-        setSignatureToken(shareToken);
-        setSignatureInvoiceId(invoiceId);
-        setSignatureOpen(true);
-        setHasDrawn(false);
-        setTimeout(
-          () =>
-            signatureSectionRef.current?.scrollIntoView({
-              behavior: "smooth",
-            }),
-          100
-        );
-      }
-    } catch {
-      toast.error(t.driver.billFailed);
-    } finally {
-      setBillLoading(false);
-    }
-  }
-
-  async function handleShareBill(invoiceId: string) {
-    setShareLoading(true);
-    try {
-      const res = await fetch(`/api/driver/ride/${token}/share`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        if (result.data.whatsappUrl) {
-          window.open(result.data.whatsappUrl, "_blank");
-        }
-        toast.success(t.driver.shareLinkGenerated);
-      } else {
-        toast.error(result.error || t.driver.shareFailed);
-      }
-    } catch {
-      toast.error(t.driver.shareFailed);
-    } finally {
-      setShareLoading(false);
-    }
-  }
-
-  async function handleDownloadBill(invoiceId: string, invoiceNumber?: string) {
-    setDownloadLoading(true);
-    try {
-      await downloadInvoicePdf(invoiceId, invoiceNumber);
-    } catch {
-      toast.error(t.driver.billFailed);
-    } finally {
-      setDownloadLoading(false);
+      setDutySlipSubmitting(false);
     }
   }
 
@@ -491,10 +310,8 @@ export default function DriverRidePage({
     );
   }
 
-  const hasCharges = Number(booking.baseFare || 0) > 0;
-  const latestUnsignedInvoice = booking.invoices.find(
-    (inv) => !inv.signedAt
-  );
+  const dutySlip = booking.dutySlip;
+  const isSubmitted = dutySlip?.status === "SUBMITTED";
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-8">
@@ -503,13 +320,55 @@ export default function DriverRidePage({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold">#{booking.bookingId}</h1>
-            <StatusBadge
-              status={booking.status}
-              label={getStatusLabel(t, booking.status)}
-            />
+            <StatusBadge status={booking.status} label={getStatusLabel(t, booking.status)} />
           </div>
         </div>
       </div>
+
+      {/* Duty Slip Info Header - Guest, Driver, Vehicle */}
+      {dutySlip && (
+        <Card className="border-orange-200 bg-orange-50/30">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-orange-500" />
+                {t.dutySlip.title}
+              </h2>
+              {isSubmitted ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                  <CheckCircle className="h-3 w-3" />
+                  {t.dutySlip.submitted}
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                  {t.dutySlip.pending}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-gray-500">{booking.vendor && !booking.driver ? t.dutySlip.vendorName || "Vendor" : t.dutySlip.driverName}</p>
+                <p className="font-medium">{booking.driver?.name || booking.vendor?.name || "-"}</p>
+              </div>
+              {(booking.driver?.phone || booking.vendor?.phone) && (
+                <div>
+                  <p className="text-xs text-gray-500">{booking.vendor && !booking.driver ? t.dutySlip.vendorPhone || "Phone" : t.dutySlip.driverPhone}</p>
+                  <p className="font-medium">{booking.driver?.phone || booking.vendor?.phone}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-gray-500">{t.dutySlip.vehicleName}</p>
+                <p className="font-medium">{dutySlip.vehicleName || booking.driver?.vehicleName || "-"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">{t.dutySlip.vehicleNumber}</p>
+                <p className="font-medium">{dutySlip.vehicleNumber || booking.driver?.vehicleNumber || "-"}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Trip Details */}
       <Card>
@@ -518,7 +377,6 @@ export default function DriverRidePage({
             <Car className="h-4 w-4 text-blue-500" />
             {t.driver.tripDetails}
           </h2>
-
           <div className="space-y-2.5">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="h-4 w-4 text-gray-400" />
@@ -530,122 +388,40 @@ export default function DriverRidePage({
                 </>
               )}
             </div>
-
             {booking.returnDate && (
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Calendar className="h-4 w-4 text-gray-400" />
-                <span>
-                  {interpolate(t.driver.returnDate, {
-                    date: formatDate(booking.returnDate),
-                  })}
-                </span>
+                <span>{interpolate(t.driver.returnDate, { date: formatDate(booking.returnDate) })}</span>
               </div>
             )}
-
             <div className="rounded-lg bg-gray-50 p-3 space-y-2">
               <div className="flex items-start gap-2">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
                 <div>
-                  <p className="text-sm font-medium">
-                    {booking.pickupLocation}
-                  </p>
-                  {booking.pickupAddress && (
-                    <p className="text-xs text-gray-500">
-                      {booking.pickupAddress}
-                    </p>
-                  )}
+                  <p className="text-sm font-medium">{booking.pickupLocation}</p>
+                  {booking.pickupAddress && <p className="text-xs text-gray-500">{booking.pickupAddress}</p>}
                 </div>
               </div>
               <div className="ml-2 border-l-2 border-dashed border-gray-200 h-3" />
               <div className="flex items-start gap-2">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                 <div>
-                  <p className="text-sm font-medium">
-                    {booking.dropLocation}
-                  </p>
-                  {booking.dropAddress && (
-                    <p className="text-xs text-gray-500">
-                      {booking.dropAddress}
-                    </p>
-                  )}
+                  <p className="text-sm font-medium">{booking.dropLocation}</p>
+                  {booking.dropAddress && <p className="text-xs text-gray-500">{booking.dropAddress}</p>}
                 </div>
               </div>
             </div>
-
-            {(booking.estimatedDistance ||
-              booking.actualDistance ||
-              booking.vehiclePreference ||
-              booking.passengerCount) && (
+            {booking.estimatedDistance && (
               <div className="flex flex-wrap gap-3 text-xs text-gray-500">
-                {booking.estimatedDistance && (
-                  <span className="flex items-center gap-1">
-                    <Route className="h-3.5 w-3.5" />
-                    {interpolate(t.driver.distanceKm, {
-                      distance: booking.estimatedDistance,
-                    })}
-                  </span>
-                )}
-                {booking.actualDistance && (
-                  <div>
-                    <p className="text-muted-foreground text-xs">
-                      {t.driver.totalKmDriven}
-                    </p>
-                    <p className="text-sm font-medium">
-                      {booking.actualDistance} km
-                    </p>
-                  </div>
-                )}
-                {booking.vehiclePreference && (
-                  <span className="flex items-center gap-1">
-                    <Car className="h-3.5 w-3.5" />
-                    {booking.vehiclePreference}
-                  </span>
-                )}
-                {booking.passengerCount && (
-                  <span className="flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5" />
-                    {interpolate(t.driver.passengersCount, {
-                      count: booking.passengerCount,
-                    })}
-                  </span>
-                )}
+                <span className="flex items-center gap-1">
+                  <Route className="h-3.5 w-3.5" />
+                  {interpolate(t.driver.distanceKm, { distance: booking.estimatedDistance })}
+                </span>
               </div>
             )}
-
-            {(booking.startKm != null || booking.endKm != null || booking.startDateTime || booking.endDateTime) && (
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                {booking.startKm != null && (
-                  <div>
-                    <p className="text-gray-500">{t.bookingDetail.startKm}</p>
-                    <p className="font-medium text-sm">{booking.startKm} km</p>
-                  </div>
-                )}
-                {booking.endKm != null && (
-                  <div>
-                    <p className="text-gray-500">{t.bookingDetail.endKm}</p>
-                    <p className="font-medium text-sm">{booking.endKm} km</p>
-                  </div>
-                )}
-                {booking.startDateTime && (
-                  <div>
-                    <p className="text-gray-500">{t.bookingDetail.startDateTime}</p>
-                    <p className="font-medium text-sm">{new Date(booking.startDateTime).toLocaleString("en-IN")}</p>
-                  </div>
-                )}
-                {booking.endDateTime && (
-                  <div>
-                    <p className="text-gray-500">{t.bookingDetail.endDateTime}</p>
-                    <p className="font-medium text-sm">{new Date(booking.endDateTime).toLocaleString("en-IN")}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
             {booking.specialRequests && (
               <p className="text-xs text-gray-500 bg-yellow-50 rounded p-2">
-                {interpolate(t.driver.noteLabel, {
-                  note: booking.specialRequests,
-                })}
+                {interpolate(t.driver.noteLabel, { note: booking.specialRequests })}
               </p>
             )}
           </div>
@@ -670,732 +446,344 @@ export default function DriverRidePage({
             </a>
           </div>
           <p className="text-xs text-gray-500">{booking.customer.phone}</p>
-          {booking.customer.email && (
-            <p className="text-xs text-gray-500">
-              {booking.customer.email}
-            </p>
-          )}
+          {booking.customer.email && <p className="text-xs text-gray-500">{booking.customer.email}</p>}
         </CardContent>
       </Card>
 
-      {/* Pricing */}
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <IndianRupee className="h-4 w-4 text-blue-500" />
-              {t.driver.pricing}
-            </h2>
-            {hasCharges &&
-              !pricingOpen &&
-              !booking.invoices?.some((inv) => inv.signedAt) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    setPricing({
-                      actualDistance:
-                        booking.actualDistance?.toString() || "",
-                      baseFare: booking.baseFare || "",
-                      tollCharges: booking.tollCharges || "0",
-                      parkingCharges: booking.parkingCharges || "0",
-                      driverAllowance: booking.driverAllowance || "0",
-                      extraCharges: booking.extraCharges || "0",
-                      extraChargesNote: booking.extraChargesNote || "",
-                      discount: booking.discount || "0",
-                      includeGst: booking.includeGst,
-                      startKm: booking.startKm?.toString() || "",
-                      endKm: booking.endKm?.toString() || "",
-                      startDateTime: booking.startDateTime ? new Date(booking.startDateTime).toISOString().slice(0, 16) : "",
-                      endDateTime: booking.endDateTime ? new Date(booking.endDateTime).toISOString().slice(0, 16) : "",
-                    });
-                    setPricingOpen(true);
-                  }}
-                >
-                  <Pencil className="mr-1 h-3 w-3" />
-                  {t.common.edit}
-                </Button>
-              )}
-          </div>
-
-          {pricingOpen ? (
-            <form onSubmit={handlePricingSubmit} className="space-y-3">
-              <div>
-                <Label htmlFor="actualDistance" className="text-xs">
-                  {t.driver.actualDistance}
-                </Label>
-                <Input
-                  id="actualDistance"
-                  type="number"
-                  step="1"
-                  min="0"
-                  placeholder={t.driver.actualDistancePlaceholder}
-                  value={pricing.actualDistance}
-                  onChange={(e) =>
-                    setPricing({
-                      ...pricing,
-                      actualDistance: e.target.value,
-                    })
-                  }
-                  className="mt-1 h-9"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="startKm" className="text-xs">{t.bookingDetail.startKm}</Label>
-                  <Input id="startKm" type="number" step="0.1" min="0" value={pricing.startKm} onChange={(e) => setPricing({ ...pricing, startKm: e.target.value })} className="mt-1 h-9" placeholder="0" />
-                </div>
-                <div>
-                  <Label htmlFor="endKm" className="text-xs">{t.bookingDetail.endKm}</Label>
-                  <Input id="endKm" type="number" step="0.1" min="0" value={pricing.endKm} onChange={(e) => setPricing({ ...pricing, endKm: e.target.value })} className="mt-1 h-9" placeholder="0" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="startDateTime" className="text-xs">{t.bookingDetail.startDateTime}</Label>
-                  <Input id="startDateTime" type="datetime-local" value={pricing.startDateTime} onChange={(e) => setPricing({ ...pricing, startDateTime: e.target.value })} className="mt-1 h-9" />
-                </div>
-                <div>
-                  <Label htmlFor="endDateTime" className="text-xs">{t.bookingDetail.endDateTime}</Label>
-                  <Input id="endDateTime" type="datetime-local" value={pricing.endDateTime} onChange={(e) => setPricing({ ...pricing, endDateTime: e.target.value })} className="mt-1 h-9" />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="baseFare" className="text-xs">
-                  {t.driver.baseFareRequired}
-                </Label>
-                <Input
-                  id="baseFare"
-                  type="number"
-                  step="1"
-                  min="0"
-                  value={pricing.baseFare}
-                  onChange={(e) =>
-                    setPricing({ ...pricing, baseFare: e.target.value })
-                  }
-                  required
-                  className="mt-1 h-9"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="tollCharges" className="text-xs">
-                    {t.driver.fastTagToll}
-                  </Label>
-                  <Input
-                    id="tollCharges"
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={pricing.tollCharges}
-                    onChange={(e) =>
-                      setPricing({
-                        ...pricing,
-                        tollCharges: e.target.value,
-                      })
-                    }
-                    className="mt-1 h-9"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="parkingCharges" className="text-xs">
-                    {t.driver.parking}
-                  </Label>
-                  <Input
-                    id="parkingCharges"
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={pricing.parkingCharges}
-                    onChange={(e) =>
-                      setPricing({
-                        ...pricing,
-                        parkingCharges: e.target.value,
-                      })
-                    }
-                    className="mt-1 h-9"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="driverAllowance" className="text-xs">
-                    {t.driver.driverAllowance}
-                  </Label>
-                  <Input
-                    id="driverAllowance"
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={pricing.driverAllowance}
-                    onChange={(e) =>
-                      setPricing({
-                        ...pricing,
-                        driverAllowance: e.target.value,
-                      })
-                    }
-                    className="mt-1 h-9"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="discount" className="text-xs">
-                    {t.driver.discount}
-                  </Label>
-                  <Input
-                    id="discount"
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={pricing.discount}
-                    onChange={(e) =>
-                      setPricing({ ...pricing, discount: e.target.value })
-                    }
-                    className="mt-1 h-9"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="extraChargesNote" className="text-xs">
-                    {t.driver.otherChargesName}
-                  </Label>
-                  <Input
-                    id="extraChargesNote"
-                    type="text"
-                    placeholder={t.driver.otherChargesPlaceholder}
-                    value={pricing.extraChargesNote}
-                    onChange={(e) =>
-                      setPricing({
-                        ...pricing,
-                        extraChargesNote: e.target.value,
-                      })
-                    }
-                    className="mt-1 h-9"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="extraCharges" className="text-xs">
-                    {t.driver.otherCharges}
-                  </Label>
-                  <Input
-                    id="extraCharges"
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={pricing.extraCharges}
-                    onChange={(e) =>
-                      setPricing({
-                        ...pricing,
-                        extraCharges: e.target.value,
-                      })
-                    }
-                    className="mt-1 h-9"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="includeGst"
-                  checked={pricing.includeGst}
-                  onChange={(e) =>
-                    setPricing({
-                      ...pricing,
-                      includeGst: e.target.checked,
-                    })
-                  }
-                  className="h-4 w-4 rounded border-gray-300 accent-orange-500"
-                />
-                <Label
-                  htmlFor="includeGst"
-                  className="text-xs font-normal cursor-pointer"
-                >
-                  {t.driver.addGst}
-                </Label>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  disabled={pricingLoading}
-                  size="sm"
-                  className="flex-1"
-                >
-                  {pricingLoading ? t.common.saving : t.driver.savePricing}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPricingOpen(false)}
-                >
-                  {t.common.cancel}
-                </Button>
-              </div>
-            </form>
-          ) : hasCharges ? (
-            <div className="space-y-1.5 text-sm">
-              <Row label={t.driver.baseFare} value={booking.baseFare} />
-              {booking.includeGst &&
-                Number(booking.taxAmount || 0) > 0 && (
-                  <Row label={t.driver.gst} value={booking.taxAmount} />
-                )}
-              {Number(booking.tollCharges || 0) > 0 && (
-                <Row
-                  label={t.driver.fastTagToll}
-                  value={booking.tollCharges}
-                />
-              )}
-              {Number(booking.parkingCharges || 0) > 0 && (
-                <Row
-                  label={t.driver.parking}
-                  value={booking.parkingCharges}
-                />
-              )}
-              {Number(booking.driverAllowance || 0) > 0 && (
-                <Row
-                  label={t.driver.driverAllowance}
-                  value={booking.driverAllowance}
-                />
-              )}
-              {Number(booking.extraCharges || 0) > 0 && (
-                <Row
-                  label={
-                    booking.extraChargesNote || t.driver.otherCharges
-                  }
-                  value={booking.extraCharges}
-                />
-              )}
-              {Number(booking.discount || 0) > 0 && (
-                <Row
-                  label={t.driver.discount}
-                  value={`-${booking.discount}`}
-                  isDiscount
-                />
-              )}
-              <div className="border-t pt-2 flex items-center justify-between font-semibold">
-                <span>{t.driver.total}</span>
-                <span>
-                  {formatCurrency(booking.totalAmount || "0")}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="py-3 text-center">
-              <p className="text-xs text-gray-500 mb-2">
-                {t.driver.noPricingAssigned}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPricingOpen(true)}
-              >
-                <Plus className="mr-1 h-3 w-3" />
-                {t.driver.assignPricing}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Bill */}
-      {hasCharges && (
+      {/* KM Readings */}
+      {dutySlip && (
         <Card>
           <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                <FileText className="h-4 w-4 text-blue-500" />
-                {t.driver.bill}
-              </h2>
-              {!booking.invoices?.some((inv) => inv.signedAt) ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={handleGenerateBill}
-                  disabled={billLoading}
-                >
-                  <Plus className="mr-1 h-3 w-3" />
-                  {billLoading
-                    ? t.common.generating
-                    : t.driver.generateBill}
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    const signedInv = booking.invoices.find((inv) => inv.signedAt)!;
-                    handleDownloadBill(signedInv.id, signedInv.invoiceNumber);
-                  }}
-                  disabled={downloadLoading}
-                >
-                  <FileText className="mr-1 h-3 w-3" />
-                  {downloadLoading ? t.common.processing : t.driver.downloadBill}
-                </Button>
-              )}
-            </div>
+            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-blue-500" />
+              {t.dutySlip.kmReadings}
+            </h2>
 
-            {booking.invoices.length > 0 ? (
-              (() => {
-                const inv = booking.invoices[0];
-                return (
-                  <div className="rounded-lg bg-gray-50 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
-                          {inv.invoiceNumber}
-                        </span>
-                        <StatusBadge
-                          status={inv.status}
-                          label={getStatusLabel(t, inv.status)}
-                        />
-                        {inv.signedAt && (
-                          <span className="inline-flex items-center gap-0.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-800">
-                            <CheckCircle className="h-2.5 w-2.5" />
-                            {t.common.signed}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-sm font-medium">
-                        {formatCurrency(inv.grandTotal)}
-                      </span>
+            {isSubmitted ? (
+              // Read-only view
+              <div className="space-y-3">
+                {/* Office Start - KM only */}
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs font-medium text-gray-700 mb-1">{t.dutySlip.officeStart}</p>
+                  <div>
+                    <p className="text-[10px] text-gray-400">{t.dutySlip.km}</p>
+                    <p className="text-sm font-medium">{dutySlip.officeStartKm ?? "-"}</p>
+                  </div>
+                </div>
+                {/* Customer Pickup - KM + Time */}
+                <div className="rounded-lg bg-gray-50 p-3 grid grid-cols-2 gap-2">
+                  <p className="text-xs font-medium text-gray-700 col-span-2">{t.dutySlip.customerPickup}</p>
+                  <div>
+                    <p className="text-[10px] text-gray-400">{t.dutySlip.km}</p>
+                    <p className="text-sm font-medium">{dutySlip.customerPickupKm ?? "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400">{t.dutySlip.time}</p>
+                    <p className="text-sm font-medium">
+                      {dutySlip.customerPickupDateTime ? new Date(dutySlip.customerPickupDateTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "-"}
+                    </p>
+                  </div>
+                </div>
+                {/* Customer Drop - KM + Time */}
+                <div className="rounded-lg bg-gray-50 p-3 grid grid-cols-2 gap-2">
+                  <p className="text-xs font-medium text-gray-700 col-span-2">{t.dutySlip.customerDrop}</p>
+                  <div>
+                    <p className="text-[10px] text-gray-400">{t.dutySlip.km}</p>
+                    <p className="text-sm font-medium">{dutySlip.customerDropKm ?? "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400">{t.dutySlip.time}</p>
+                    <p className="text-sm font-medium">
+                      {dutySlip.customerDropDateTime ? new Date(dutySlip.customerDropDateTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "-"}
+                    </p>
+                  </div>
+                </div>
+                {/* Customer End - KM only */}
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs font-medium text-gray-700 mb-1">{t.dutySlip.customerEnd}</p>
+                  <div>
+                    <p className="text-[10px] text-gray-400">{t.dutySlip.km}</p>
+                    <p className="text-sm font-medium">{dutySlip.customerEndKm ?? "-"}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Editable form
+              <div className="space-y-3">
+                {/* Office Start - KM only, no date/time */}
+                <div className="rounded-lg bg-gray-50 p-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-700">{t.dutySlip.officeStart}</p>
+                  <div>
+                    <Label className="text-[10px] text-gray-400">{t.dutySlip.km}</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      placeholder="0"
+                      value={dutySlipForm.officeStartKm}
+                      onChange={(e) => setDutySlipForm({ ...dutySlipForm, officeStartKm: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                {/* Customer Pickup - KM + Time text input */}
+                <div className="rounded-lg bg-gray-50 p-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-700">{t.dutySlip.customerPickup}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-[10px] text-gray-400">{t.dutySlip.km}</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        placeholder="0"
+                        value={dutySlipForm.customerPickupKm}
+                        onChange={(e) => setDutySlipForm({ ...dutySlipForm, customerPickupKm: e.target.value })}
+                        className="h-8 text-sm"
+                      />
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs flex-1"
-                        onClick={() => handleDownloadBill(inv.id, inv.invoiceNumber)}
-                        disabled={downloadLoading}
-                      >
-                        <FileText className="mr-1 h-3 w-3" />
-                        {downloadLoading ? t.common.processing : t.driver.downloadBill}
-                      </Button>
-                      {!inv.signedAt ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs flex-1"
-                          onClick={() =>
-                            openSignaturePanel(inv.id, inv.shareToken)
-                          }
-                        >
-                          <PenTool className="mr-1 h-3 w-3" />
-                          {t.driver.getSignature}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs flex-1"
-                          onClick={() => handleShareBill(inv.id)}
-                          disabled={shareLoading}
-                        >
-                          <Share2 className="mr-1 h-3 w-3" />
-                          {t.driver.share}
-                        </Button>
-                      )}
+                    <div>
+                      <Label className="text-[10px] text-gray-400">{t.dutySlip.time}</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. 10:30 AM"
+                        value={dutySlipForm.customerPickupDateTime}
+                        onChange={(e) => setDutySlipForm({ ...dutySlipForm, customerPickupDateTime: e.target.value })}
+                        className="h-8 text-sm"
+                      />
                     </div>
                   </div>
-                );
-              })()
-            ) : (
-              <p className="text-xs text-gray-500 text-center py-2">
-                {t.driver.noBillsGenerated}
-              </p>
+                </div>
+                {/* Customer Drop - KM + Time text input */}
+                <div className="rounded-lg bg-gray-50 p-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-700">{t.dutySlip.customerDrop}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-[10px] text-gray-400">{t.dutySlip.km}</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        placeholder="0"
+                        value={dutySlipForm.customerDropKm}
+                        onChange={(e) => setDutySlipForm({ ...dutySlipForm, customerDropKm: e.target.value })}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-gray-400">{t.dutySlip.time}</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. 5:00 PM"
+                        value={dutySlipForm.customerDropDateTime}
+                        onChange={(e) => setDutySlipForm({ ...dutySlipForm, customerDropDateTime: e.target.value })}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+                {/* Customer End - KM only, no date/time */}
+                <div className="rounded-lg bg-gray-50 p-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-700">{t.dutySlip.customerEnd}</p>
+                  <div>
+                    <Label className="text-[10px] text-gray-400">{t.dutySlip.km}</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      placeholder="0"
+                      value={dutySlipForm.customerEndKm}
+                      onChange={(e) => setDutySlipForm({ ...dutySlipForm, customerEndKm: e.target.value })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* Signature Panel */}
-      {signatureOpen && (
-        <div ref={signatureSectionRef}>
-          <Card className="border-orange-200 bg-orange-50/30">
-            <CardContent className="p-4 space-y-3">
-              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                <PenTool className="h-4 w-4 text-orange-500" />
-                {t.driver.customerSignature}
-              </h2>
-              <p className="text-xs text-gray-500">
-                {t.driver.signatureInstructions}
-              </p>
-              <div className="rounded-lg border-2 border-dashed border-gray-300 bg-white">
-                <canvas
-                  ref={canvasRef}
-                  className="h-40 w-full cursor-crosshair touch-none"
-                  style={{ touchAction: "none" }}
-                />
+      {/* Duty Expenses */}
+      {dutySlip && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-blue-500" />
+              {t.dutySlip.dutyExpenses}
+            </h2>
+
+            {isSubmitted ? (
+              <div className="space-y-2 text-sm">
+                {Number(dutySlip.tollAmount || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">{t.dutySlip.tollAmount}</span>
+                    <span>{formatCurrency(dutySlip.tollAmount || "0")}</span>
+                  </div>
+                )}
+                {Number(dutySlip.parkingAmount || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">{t.dutySlip.parkingAmount}</span>
+                    <span>{formatCurrency(dutySlip.parkingAmount || "0")}</span>
+                  </div>
+                )}
+                {dutySlip.otherChargeName && Number(dutySlip.otherChargeAmount || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">{dutySlip.otherChargeName}</span>
+                    <span>{formatCurrency(dutySlip.otherChargeAmount || "0")}</span>
+                  </div>
+                )}
+                {!Number(dutySlip.tollAmount || 0) && !Number(dutySlip.parkingAmount || 0) && !Number(dutySlip.otherChargeAmount || 0) && (
+                  <p className="text-xs text-gray-400 text-center py-1">-</p>
+                )}
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearCanvas}
-                  disabled={!hasDrawn}
-                >
-                  <RotateCcw className="mr-1 h-3 w-3" />
-                  {t.common.clear}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSubmitSignature}
-                  disabled={!hasDrawn || signing}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600"
-                >
-                  <Send className="mr-1 h-3 w-3" />
-                  {signing
-                    ? t.common.submitting
-                    : t.driver.submitSignature}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSignatureOpen(false);
-                    setSignatureToken(null);
-                    setSignatureInvoiceId(null);
-                    setHasDrawn(false);
-                  }}
-                >
-                  {t.common.cancel}
-                </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">{t.dutySlip.tollAmount}</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      placeholder="0"
+                      value={dutySlipForm.tollAmount}
+                      onChange={(e) => setDutySlipForm({ ...dutySlipForm, tollAmount: e.target.value })}
+                      className="mt-1 h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">{t.dutySlip.parkingAmount}</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      placeholder="0"
+                      value={dutySlipForm.parkingAmount}
+                      onChange={(e) => setDutySlipForm({ ...dutySlipForm, parkingAmount: e.target.value })}
+                      className="mt-1 h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">{t.dutySlip.otherChargeName}</Label>
+                    <Input
+                      type="text"
+                      placeholder={t.dutySlip.otherChargeNamePlaceholder}
+                      value={dutySlipForm.otherChargeName}
+                      onChange={(e) => setDutySlipForm({ ...dutySlipForm, otherChargeName: e.target.value })}
+                      className="mt-1 h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">{t.dutySlip.otherChargeAmount}</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      placeholder="0"
+                      value={dutySlipForm.otherChargeAmount}
+                      onChange={(e) => setDutySlipForm({ ...dutySlipForm, otherChargeAmount: e.target.value })}
+                      className="mt-1 h-8 text-sm"
+                    />
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      {/* Payment Section */}
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <IndianRupee className="h-4 w-4 text-blue-500" />
-              {t.driver.paymentsSection}
-            </h2>
-            <div className="flex items-center gap-2">
-              <StatusBadge
-                status={booking.paymentStatus}
-                label={getStatusLabel(t, booking.paymentStatus)}
-              />
-              {hasCharges && booking.paymentStatus !== "PAID" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    const totalPaid = booking.payments.reduce(
-                      (sum, p) => sum + parseFloat(p.amount),
-                      0
-                    );
-                    const remaining = Math.max(
-                      0,
-                      parseFloat(booking.totalAmount || "0") - totalPaid
-                    );
-                    setPaymentForm({
-                      amount:
-                        remaining > 0 ? remaining.toString() : "",
-                      method: "CASH",
-                      isAdvance: false,
-                      transactionRef: "",
-                      notes: "",
-                    });
-                    setPaymentOpen(!paymentOpen);
-                  }}
-                >
-                  <Plus className="mr-1 h-3 w-3" />
-                  {t.common.record}
-                </Button>
-              )}
-            </div>
+      {/* Customer Signature + Actions */}
+      {dutySlip && !isSubmitted && (
+        <>
+          {/* Save Draft / Open Signature */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={handleSaveDutyDraft}
+              disabled={draftSaving}
+            >
+              {draftSaving ? t.dutySlip.savingDraft : t.dutySlip.saveDraft}
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 bg-orange-500 hover:bg-orange-600"
+              onClick={() => {
+                setDutySignatureOpen(true);
+                setDutyHasDrawn(false);
+                setTimeout(() => dutySignatureSectionRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+              }}
+            >
+              <PenTool className="mr-1 h-3 w-3" />
+              {t.dutySlip.submit}
+            </Button>
           </div>
 
-          {paymentOpen && (
-            <form
-              onSubmit={handleRecordPayment}
-              className="space-y-3 rounded-lg border p-3"
-            >
-              <div>
-                <Label htmlFor="payAmount" className="text-xs">
-                  {t.driver.amountRequired}
-                </Label>
-                <Input
-                  id="payAmount"
-                  type="number"
-                  step="1"
-                  min="1"
-                  value={paymentForm.amount}
-                  onChange={(e) =>
-                    setPaymentForm({
-                      ...paymentForm,
-                      amount: e.target.value,
-                    })
-                  }
-                  required
-                  className="mt-1 h-9"
-                />
-              </div>
-              <div>
-                <Label htmlFor="payMethod" className="text-xs">
-                  {t.driver.methodRequired}
-                </Label>
-                <Select
-                  value={paymentForm.method}
-                  onValueChange={(v) =>
-                    setPaymentForm({
-                      ...paymentForm,
-                      method: v as "CASH" | "ONLINE",
-                    })
-                  }
-                >
-                  <SelectTrigger className="mt-1 h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CASH">
-                      {t.paymentMethods.cash}
-                    </SelectItem>
-                    <SelectItem value="ONLINE">
-                      {t.paymentMethods.online}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {paymentForm.method === "ONLINE" && (
-                <div>
-                  <Label htmlFor="transactionRef" className="text-xs">
-                    {t.driver.transactionRef}
-                  </Label>
-                  <Input
-                    id="transactionRef"
-                    type="text"
-                    placeholder={t.driver.transactionRefPlaceholder}
-                    value={paymentForm.transactionRef}
-                    onChange={(e) =>
-                      setPaymentForm({
-                        ...paymentForm,
-                        transactionRef: e.target.value,
-                      })
-                    }
-                    className="mt-1 h-9"
-                  />
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isAdvance"
-                  checked={paymentForm.isAdvance}
-                  onChange={(e) =>
-                    setPaymentForm({
-                      ...paymentForm,
-                      isAdvance: e.target.checked,
-                    })
-                  }
-                  className="h-4 w-4 rounded border-gray-300 accent-orange-500"
-                />
-                <Label
-                  htmlFor="isAdvance"
-                  className="cursor-pointer text-xs font-normal"
-                >
-                  {t.driver.advancePayment}
-                </Label>
-              </div>
-              <div>
-                <Label htmlFor="payNotes" className="text-xs">
-                  {t.driver.notes}
-                </Label>
-                <Input
-                  id="payNotes"
-                  type="text"
-                  placeholder={t.driver.notesPlaceholder}
-                  value={paymentForm.notes}
-                  onChange={(e) =>
-                    setPaymentForm({
-                      ...paymentForm,
-                      notes: e.target.value,
-                    })
-                  }
-                  className="mt-1 h-9"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={paymentLoading}
-                  className="flex-1"
-                >
-                  {paymentLoading
-                    ? t.common.saving
-                    : t.driver.savePayment}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPaymentOpen(false)}
-                >
-                  {t.common.cancel}
-                </Button>
-              </div>
-            </form>
-          )}
-
-          {booking.payments.length > 0 ? (
-            <div className="space-y-2">
-              {booking.payments.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium">
-                      {formatCurrency(p.amount)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {getPaymentMethodLabel(t, p.method)}
-                      {p.isAdvance && ` (${t.common.advance})`}
-                    </p>
+          {/* Customer Signature Panel */}
+          {dutySignatureOpen && (
+            <div ref={dutySignatureSectionRef}>
+              <Card className="border-orange-200 bg-orange-50/30">
+                <CardContent className="p-4 space-y-3">
+                  <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <PenTool className="h-4 w-4 text-orange-500" />
+                    {t.driver.customerSignature}
+                  </h2>
+                  <p className="text-xs text-gray-500">{t.dutySlip.signatureInstructions}</p>
+                  <div className="rounded-lg border-2 border-dashed border-gray-300 bg-white">
+                    <canvas
+                      ref={dutyCanvasRef}
+                      className="h-40 w-full cursor-crosshair touch-none"
+                      style={{ touchAction: "none" }}
+                    />
                   </div>
-                  <span className="text-xs text-gray-400">
-                    {formatDate(p.paymentDate)}
-                  </span>
-                </div>
-              ))}
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={clearDutyCanvas} disabled={!dutyHasDrawn}>
+                      <RotateCcw className="mr-1 h-3 w-3" />
+                      {t.common.clear}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSubmitDutySlip}
+                      disabled={!dutyHasDrawn || dutySlipSubmitting}
+                      className="flex-1 bg-orange-500 hover:bg-orange-600"
+                    >
+                      <Send className="mr-1 h-3 w-3" />
+                      {dutySlipSubmitting ? t.common.submitting : t.dutySlip.submit}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setDutySignatureOpen(false); setDutyHasDrawn(false); }}>
+                      {t.common.cancel}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          ) : !paymentOpen ? (
-            <p className="text-xs text-gray-500 text-center py-2">
-              {t.driver.noPaymentsRecorded}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+          )}
+        </>
+      )}
 
-function Row({
-  label,
-  value,
-  isDiscount,
-}: {
-  label: string;
-  value: string | null;
-  isDiscount?: boolean;
-}) {
-  if (!value) return null;
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-gray-500">{label}</span>
-      <span className={isDiscount ? "text-green-600" : ""}>
-        {isDiscount
-          ? `- ${formatCurrency(value.replace("-", ""))}`
-          : formatCurrency(value)}
-      </span>
+      {/* Submitted Customer Signature Display */}
+      {dutySlip && isSubmitted && dutySlip.signatureData && (
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <PenTool className="h-4 w-4 text-green-500" />
+              {t.driver.customerSignature}
+            </h2>
+            <div className="rounded-lg border bg-gray-50 p-2">
+              <img src={dutySlip.signatureData} alt="Customer Signature" className="h-24 w-auto mx-auto" />
+            </div>
+            {dutySlip.submittedAt && (
+              <p className="text-xs text-gray-400 text-center">
+                {interpolate(t.dutySlip.submittedAt, { date: new Date(dutySlip.submittedAt).toLocaleString("en-IN") })}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

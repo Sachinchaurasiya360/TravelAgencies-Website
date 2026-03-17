@@ -1,8 +1,13 @@
 import { z } from "zod";
 
-export const loginSchema = z.object({
+export const otpRequestSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters").max(128),
 });
 
-export type LoginInput = z.infer<typeof loginSchema>;
+export const otpVerifySchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  code: z.string().regex(/^\d{6}$/, "OTP must be 6 digits"),
+});
+
+export type OtpRequestInput = z.infer<typeof otpRequestSchema>;
+export type OtpVerifyInput = z.infer<typeof otpVerifySchema>;

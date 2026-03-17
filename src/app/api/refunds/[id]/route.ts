@@ -22,8 +22,6 @@ export async function GET(
         booking: {
           select: {
             bookingId: true,
-            tripType: true,
-            vehicleType: true,
             totalAmount: true,
             paymentStatus: true,
             customer: true,

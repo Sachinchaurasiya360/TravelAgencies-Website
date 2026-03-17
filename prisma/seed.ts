@@ -63,7 +63,7 @@ async function main() {
       companyPincode: "411001",
       companyPhone: "7498125466",
       companyEmail: "sarthaktourandtravelpune@gmail.com",
-      gstRate: 5.0,
+      gstRate: 0,
       defaultSacCode: "9964",
       bookingPrefix: "TA",
       invoicePrefix: "INV",

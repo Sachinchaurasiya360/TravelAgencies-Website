@@ -38,6 +38,8 @@ import {
   Link2,
   Truck,
   CheckCircle,
+  ClipboardList,
+  Gauge,
 } from "lucide-react";
 import Link from "next/link";
 import type { BOOKING_STATUSES } from "@/lib/constants";
@@ -57,8 +59,6 @@ interface BookingDetail {
   dropLocation: string;
   pickupTime: string | null;
   baseFare: string | null;
-  taxAmount: string | null;
-  includeGst: boolean;
   tollCharges: string | null;
   parkingCharges: string | null;
   driverAllowance: string | null;
@@ -77,12 +77,34 @@ interface BookingDetail {
   cancellationReason: string | null;
   createdAt: string;
   customer: { id: string; name: string; phone: string; email: string | null };
-  driver: { id: string; name: string; phone: string } | null;
+  driver: { id: string; name: string; phone: string; vehicleName?: string | null; vehicleNumber?: string | null } | null;
   driverAccessToken: string | null;
   carSource: "OWN_CAR" | "VENDOR_CAR";
   vendorId: string | null;
   vendor: { id: string; name: string; phone: string } | null;
   vendorCost: string | null;
+  dutySlip: {
+    id: string;
+    status: string;
+    guestName: string;
+    vehicleName: string | null;
+    vehicleNumber: string | null;
+    officeStartKm: number | null;
+    officeStartDateTime: string | null;
+    customerPickupKm: number | null;
+    customerPickupDateTime: string | null;
+    customerDropKm: number | null;
+    customerDropDateTime: string | null;
+    customerEndKm: number | null;
+    customerEndDateTime: string | null;
+    tollAmount: string | null;
+    parkingAmount: string | null;
+    otherChargeName: string | null;
+    otherChargeAmount: string | null;
+    signatureData: string | null;
+    signedAt: string | null;
+    submittedAt: string | null;
+  } | null;
   invoices: { id: string; invoiceNumber: string; grandTotal: string; status: string; shareToken: string | null; signedAt: string | null }[];
   notes: { id: string; content: string; createdAt: string; user: { name: string } }[];
   payments: { id: string; amount: string; method: string; paymentDate: string; isAdvance: boolean }[];
@@ -117,11 +139,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     extraCharges: "",
     extraChargesNote: "",
     discount: "",
-    includeGst: false,
-    startKm: "",
-    endKm: "",
-    startDateTime: "",
-    endDateTime: "",
   });
   const [pricingLoading, setPricingLoading] = useState(false);
 
@@ -159,6 +176,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const [selectedDriverId, setSelectedDriverId] = useState("");
   const [driverLoading, setDriverLoading] = useState(false);
   const [showDriverSelect, setShowDriverSelect] = useState(false);
+  const [showVendorEdit, setShowVendorEdit] = useState(false);
   const [driverLinkLoading, setDriverLinkLoading] = useState(false);
 
   // Car source & Vendor
@@ -259,11 +277,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           extraCharges: parseFloat(pricing.extraCharges) || 0,
           extraChargesNote: pricing.extraChargesNote || undefined,
           discount: parseFloat(pricing.discount) || 0,
-          includeGst: pricing.includeGst,
-          ...(pricing.startKm && { startKm: parseFloat(pricing.startKm) }),
-          ...(pricing.endKm && { endKm: parseFloat(pricing.endKm) }),
-          ...(pricing.startDateTime && { startDateTime: pricing.startDateTime }),
-          ...(pricing.endDateTime && { endDateTime: pricing.endDateTime }),
         }),
       });
       const result = await res.json();
@@ -771,26 +784,32 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               </label>
             </div>
 
-            {/* OWN_CAR: Driver assignment */}
-            {carSource === "OWN_CAR" && (
-              <div>
-                {booking.driver ? (
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="h-4 w-4 text-blue-500" />
-                      <span className="font-medium">{booking.driver.name}</span>
-                      <span className="text-muted-foreground">({booking.driver.phone})</span>
+            {/* VENDOR_CAR: Vendor selection */}
+            {carSource === "VENDOR_CAR" && (
+              <div className="space-y-3">
+                {booking.vendor && !showVendorEdit ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm rounded-lg bg-gray-50 p-3">
+                      <Truck className="h-4 w-4 text-orange-500" />
+                      <span className="font-medium">{booking.vendor.name}</span>
+                      <span className="text-muted-foreground">({booking.vendor.phone})</span>
+                      {booking.vendorCost && (
+                        <span className="ml-auto text-sm font-medium text-blue-600">
+                          {formatCurrency(booking.vendorCost)}
+                        </span>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          setShowDriverSelect(true);
-                          setSelectedDriverId("");
+                          setShowVendorEdit(true);
+                          setSelectedVendorId(booking.vendorId || "");
+                          setVendorCost(booking.vendorCost?.toString() || "");
                         }}
                       >
-                        {t.bookingDetail.changeDriver}
+                        {t.common.edit}
                       </Button>
                       <Button
                         variant="outline"
@@ -803,113 +822,146 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                       </Button>
                     </div>
                   </div>
-                ) : !showDriverSelect ? (
-                  <div className="text-muted-foreground py-4 text-center text-sm">
-                    {t.bookingDetail.noDriverAssigned}
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={() => setShowDriverSelect(true)}
-                    >
-                      {t.bookingDetail.assignDriver}
-                    </Button>
-                  </div>
-                ) : null}
-                {showDriverSelect && (
-                  <div className="space-y-3">
-                    <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+                ) : (
+                  <>
+                    <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
                       <SelectTrigger>
-                        <SelectValue placeholder={t.bookingDetail.selectDriver} />
+                        <SelectValue placeholder={t.bookingDetail.selectVendor} />
                       </SelectTrigger>
                       <SelectContent>
-                        {drivers.length === 0 ? (
+                        {vendors.length === 0 ? (
                           <SelectItem value="_none" disabled>
-                            {t.bookingDetail.noDriversAvailable}
+                            No vendors available
                           </SelectItem>
                         ) : (
-                          drivers.map((d) => (
-                            <SelectItem key={d.id} value={d.id}>
-                              {d.name} ({d.phone})
+                          vendors.map((v) => (
+                            <SelectItem key={v.id} value={v.id}>
+                              {v.name} ({v.phone})
                             </SelectItem>
                           ))
                         )}
                       </SelectContent>
                     </Select>
+                    <div>
+                      <Label className="text-sm">{t.bookingDetail.vendorCostLabel}</Label>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="0"
+                        placeholder="0"
+                        value={vendorCost}
+                        onChange={(e) => setVendorCost(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        onClick={handleAssignDriver}
-                        disabled={!selectedDriverId || driverLoading}
+                        onClick={async () => {
+                          await handleAssignVendor();
+                          setShowVendorEdit(false);
+                        }}
+                        disabled={!selectedVendorId || vendorLoading}
                       >
-                        {driverLoading ? t.bookingDetail.assigning : t.common.assign}
+                        {vendorLoading ? t.common.saving : t.bookingDetail.saveVendorAssignment}
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setShowDriverSelect(false)}
-                      >
-                        {t.common.cancel}
-                      </Button>
+                      {booking.vendor && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowVendorEdit(false)}
+                        >
+                          {t.common.cancel}
+                        </Button>
+                      )}
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             )}
 
-            {/* VENDOR_CAR: Vendor selection */}
-            {carSource === "VENDOR_CAR" && (
-              <div className="space-y-3">
-                {booking.vendor && !vendorLoading && (
-                  <div className="flex items-center gap-2 text-sm rounded-lg bg-gray-50 p-3">
-                    <Truck className="h-4 w-4 text-orange-500" />
-                    <span className="font-medium">{booking.vendor.name}</span>
-                    <span className="text-muted-foreground">({booking.vendor.phone})</span>
-                    {booking.vendorCost && (
-                      <span className="ml-auto text-sm font-medium text-blue-600">
-                        {formatCurrency(booking.vendorCost)}
-                      </span>
-                    )}
+            {/* Driver assignment (OWN_CAR only) */}
+            {carSource === "OWN_CAR" && <div>
+              {booking.driver ? (
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="h-4 w-4 text-blue-500" />
+                    <span className="font-medium">{booking.driver.name}</span>
+                    <span className="text-muted-foreground">({booking.driver.phone})</span>
                   </div>
-                )}
-                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t.bookingDetail.selectVendor} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendors.length === 0 ? (
-                      <SelectItem value="_none" disabled>
-                        No vendors available
-                      </SelectItem>
-                    ) : (
-                      vendors.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          {v.name} ({v.phone})
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                <div>
-                  <Label className="text-sm">{t.bookingDetail.vendorCostLabel}</Label>
-                  <Input
-                    type="number"
-                    step="1"
-                    min="0"
-                    placeholder="0"
-                    value={vendorCost}
-                    onChange={(e) => setVendorCost(e.target.value)}
-                    className="mt-1"
-                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowDriverSelect(true);
+                        setSelectedDriverId("");
+                      }}
+                    >
+                      {t.bookingDetail.changeDriver}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyDriverLink}
+                      disabled={driverLinkLoading}
+                    >
+                      <Link2 className="mr-1 h-3 w-3" />
+                      {driverLinkLoading ? t.common.processing : t.bookingDetail.copyDriverLink}
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={handleAssignVendor}
-                  disabled={!selectedVendorId || vendorLoading}
-                >
-                  {vendorLoading ? t.common.saving : t.bookingDetail.saveVendorAssignment}
-                </Button>
-              </div>
-            )}
+              ) : !showDriverSelect ? (
+                <div className="text-muted-foreground py-4 text-center text-sm">
+                  {t.bookingDetail.noDriverAssigned}
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => setShowDriverSelect(true)}
+                  >
+                    {t.bookingDetail.assignDriver}
+                  </Button>
+                </div>
+              ) : null}
+              {showDriverSelect && (
+                <div className="space-y-3">
+                  <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t.bookingDetail.selectDriver} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drivers.length === 0 ? (
+                        <SelectItem value="_none" disabled>
+                          {t.bookingDetail.noDriversAvailable}
+                        </SelectItem>
+                      ) : (
+                        drivers.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name} ({d.phone})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleAssignDriver}
+                      disabled={!selectedDriverId || driverLoading}
+                    >
+                      {driverLoading ? t.bookingDetail.assigning : t.common.assign}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowDriverSelect(false)}
+                    >
+                      {t.common.cancel}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>}
           </CardContent>
         </Card>
 
@@ -925,12 +977,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   <span className="text-muted-foreground">{t.bookingDetail.baseFare}</span>
                   <span>{formatCurrency(booking.baseFare)}</span>
                 </div>
-                {booking.includeGst && parseFloat(booking.taxAmount || "0") > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.bookingDetail.gst}</span>
-                  <span>{formatCurrency(booking.taxAmount)}</span>
-                </div>
-                )}
                 {parseFloat(booking.tollCharges || "0") > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t.bookingDetail.fastTagToll}</span>
@@ -967,12 +1013,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   <span>{t.common.total}</span>
                   <span className="text-blue-600">{formatCurrency(booking.totalAmount)}</span>
                 </div>
-                {booking.actualDistance && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t.bookingDetail.totalKm}</span>
-                    <span>{booking.actualDistance} km</span>
-                  </div>
-                )}
                 {/* Admin can always edit pricing */}
                 <Button
                     variant="outline"
@@ -987,11 +1027,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                         extraCharges: parseFloat(booking.extraCharges || "0") > 0 ? booking.extraCharges! : "",
                         extraChargesNote: booking.extraChargesNote || "",
                         discount: parseFloat(booking.discount || "0") > 0 ? booking.discount! : "",
-                        includeGst: booking.includeGst,
-                        startKm: booking.startKm?.toString() || "",
-                        endKm: booking.endKm?.toString() || "",
-                        startDateTime: booking.startDateTime ? new Date(booking.startDateTime).toISOString().slice(0, 16) : "",
-                        endDateTime: booking.endDateTime ? new Date(booking.endDateTime).toISOString().slice(0, 16) : "",
                       });
                       setPricingOpen(true);
                     }}
@@ -1002,56 +1037,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               </div>
             ) : pricingOpen ? (
               <form onSubmit={handlePricingSubmit} className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="startKm">{t.bookingDetail.startKm}</Label>
-                    <Input
-                      id="startKm"
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={pricing.startKm}
-                      onChange={(e) => setPricing({ ...pricing, startKm: e.target.value })}
-                      className="mt-1"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="endKm">{t.bookingDetail.endKm}</Label>
-                    <Input
-                      id="endKm"
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={pricing.endKm}
-                      onChange={(e) => setPricing({ ...pricing, endKm: e.target.value })}
-                      className="mt-1"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="startDateTime">{t.bookingDetail.startDateTime}</Label>
-                    <Input
-                      id="startDateTime"
-                      type="datetime-local"
-                      value={pricing.startDateTime}
-                      onChange={(e) => setPricing({ ...pricing, startDateTime: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="endDateTime">{t.bookingDetail.endDateTime}</Label>
-                    <Input
-                      id="endDateTime"
-                      type="datetime-local"
-                      value={pricing.endDateTime}
-                      onChange={(e) => setPricing({ ...pricing, endDateTime: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
                 <div>
                   <Label htmlFor="baseFare">{t.bookingDetail.baseFareRequired}</Label>
                   <Input
@@ -1147,18 +1132,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                       placeholder="0"
                     />
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="includeGst"
-                    checked={pricing.includeGst}
-                    onChange={(e) => setPricing({ ...pricing, includeGst: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300 accent-orange-500"
-                  />
-                  <Label htmlFor="includeGst" className="text-sm font-normal cursor-pointer">
-                    {t.bookingDetail.addGst}
-                  </Label>
                 </div>
                 <div className="flex gap-2">
                   <Button type="submit" disabled={pricingLoading} size="sm">
@@ -1386,6 +1359,147 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         );
       })()}
 
+      {/* Duty Slip */}
+      {booking.dutySlip && (() => {
+        const ds = booking.dutySlip;
+        const isSubmitted = ds.status === "SUBMITTED";
+        return (
+          <Card className={isSubmitted ? "border-green-200" : "border-yellow-200"}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-lg">
+                <span className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5 text-orange-500" />
+                  {t.dutySlip.title}
+                </span>
+                {isSubmitted ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800">
+                    <CheckCircle className="h-3 w-3" />
+                    {t.dutySlip.submitted}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-medium text-yellow-800">
+                    {t.dutySlip.pending}
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Info row */}
+              <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+                <div>
+                  <p className="text-muted-foreground text-xs">{t.dutySlip.guestName}</p>
+                  <p className="font-medium">{ds.guestName}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">
+                    {booking.carSource === "VENDOR_CAR" && !booking.driver ? t.dutySlip.vendorName : t.dutySlip.driverName}
+                  </p>
+                  <p className="font-medium">{booking.driver?.name || booking.vendor?.name || "-"}</p>
+                </div>
+                {(booking.driver?.phone || (booking.carSource === "VENDOR_CAR" && booking.vendor?.phone)) && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">
+                      {booking.carSource === "VENDOR_CAR" && !booking.driver ? t.dutySlip.vendorPhone : t.dutySlip.driverPhone}
+                    </p>
+                    <p className="font-medium">{booking.driver?.phone || booking.vendor?.phone}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-muted-foreground text-xs">{t.dutySlip.vehicleName}</p>
+                  <p className="font-medium">{ds.vehicleName || booking.driver?.vehicleName || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">{t.dutySlip.vehicleNumber}</p>
+                  <p className="font-medium">{ds.vehicleNumber || booking.driver?.vehicleNumber || "-"}</p>
+                </div>
+              </div>
+
+              {/* KM Readings */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Gauge className="h-4 w-4 text-blue-500" />
+                  {t.dutySlip.kmReadings}
+                </h3>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {/* Office Start - KM only */}
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.officeStart}</p>
+                    <div className="text-sm">
+                      <span>{ds.officeStartKm != null ? `${ds.officeStartKm} km` : "-"}</span>
+                    </div>
+                  </div>
+                  {/* Customer Pickup - KM + Time */}
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.customerPickup}</p>
+                    <div className="flex justify-between text-sm">
+                      <span>{ds.customerPickupKm != null ? `${ds.customerPickupKm} km` : "-"}</span>
+                      <span className="text-gray-500">{ds.customerPickupDateTime || "-"}</span>
+                    </div>
+                  </div>
+                  {/* Customer Drop - KM + Time */}
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.customerDrop}</p>
+                    <div className="flex justify-between text-sm">
+                      <span>{ds.customerDropKm != null ? `${ds.customerDropKm} km` : "-"}</span>
+                      <span className="text-gray-500">{ds.customerDropDateTime || "-"}</span>
+                    </div>
+                  </div>
+                  {/* Customer End - KM only */}
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.customerEnd}</p>
+                    <div className="text-sm">
+                      <span>{ds.customerEndKm != null ? `${ds.customerEndKm} km` : "-"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Expenses */}
+              {(Number(ds.tollAmount || 0) > 0 || Number(ds.parkingAmount || 0) > 0 || Number(ds.otherChargeAmount || 0) > 0) && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold">{t.dutySlip.dutyExpenses}</h3>
+                  <div className="space-y-1 text-sm">
+                    {Number(ds.tollAmount || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t.dutySlip.tollAmount}</span>
+                        <span>{formatCurrency(ds.tollAmount || "0")}</span>
+                      </div>
+                    )}
+                    {Number(ds.parkingAmount || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t.dutySlip.parkingAmount}</span>
+                        <span>{formatCurrency(ds.parkingAmount || "0")}</span>
+                      </div>
+                    )}
+                    {ds.otherChargeName && Number(ds.otherChargeAmount || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{ds.otherChargeName}</span>
+                        <span>{formatCurrency(ds.otherChargeAmount || "0")}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Signature */}
+              {ds.signatureData && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold">{t.dutySlip.signature}</h3>
+                  <div className="rounded-lg border bg-gray-50 p-2 inline-block">
+                    <img src={ds.signatureData} alt="Signature" className="h-20 w-auto" />
+                  </div>
+                  {ds.submittedAt && (
+                    <p className="text-xs text-muted-foreground">
+                      {interpolate(t.dutySlip.submittedAt, { date: new Date(ds.submittedAt).toLocaleString("en-IN") })}
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Notes */}
       <Card>
         <CardHeader>
@@ -1448,9 +1562,9 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         onConfirm={handleStatusChange}
         loading={statusLoading}
       >
-        {statusDialog.status === "CONFIRMED" && (!booking.driver || !booking.baseFare) && (
+        {statusDialog.status === "CONFIRMED" && ((!booking.driver && booking.carSource !== "VENDOR_CAR") || !booking.baseFare) && (
           <div className="space-y-2">
-            {!booking.driver && (
+            {!booking.driver && booking.carSource !== "VENDOR_CAR" && (
               <div className="flex items-center gap-2 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>{t.bookingDetail.noDriverWarning}</span>

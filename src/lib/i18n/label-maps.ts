@@ -23,27 +23,6 @@ export function getStatusLabel(t: Translations, status: string): string {
   return map[status] ?? status;
 }
 
-export function getVehicleTypeLabel(t: Translations, type: string): string {
-  const map: Record<string, string> = {
-    CAR_SEDAN: t.vehicleTypes.sedan,
-    CAR_SUV: t.vehicleTypes.suv,
-    CAR_HATCHBACK: t.vehicleTypes.hatchback,
-    CAR_LUXURY: t.vehicleTypes.luxury,
-    TEMPO_TRAVELLER: t.vehicleTypes.tempoTraveller,
-    MINI_BUS: t.vehicleTypes.miniBus,
-    BUS: t.vehicleTypes.bus,
-    OTHER: t.vehicleTypes.other,
-  };
-  return map[type] ?? type;
-}
-
-export function getTripTypeLabel(t: Translations, type: string): string {
-  const map: Record<string, string> = {
-    ONE_WAY: t.tripTypes.oneWay,
-    ROUND_TRIP: t.tripTypes.roundTrip,
-  };
-  return map[type] ?? type;
-}
 
 export function getPaymentMethodLabel(t: Translations, method: string): string {
   const map: Record<string, string> = {

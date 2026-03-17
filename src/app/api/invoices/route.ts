@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma, InvoiceStatus, ActivityAction } from "@prisma/client";
 import { createInvoiceSchema } from "@/validators/invoice.validator";
-import { calculateGst } from "@/lib/helpers/gst";
 import { amountToWords } from "@/lib/helpers/currency";
 import {
   successResponse,
@@ -56,7 +55,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.findMany({
         where,
         include: {
-          booking: { select: { id: true, bookingId: true, tripType: true, vehicleType: true } },
+          booking: { select: { id: true, bookingId: true } },
           customer: { select: { id: true, name: true, phone: true } },
         },
         orderBy: { [safeSortField(sortBy, INVOICE_SORT_FIELDS)]: sortOrder },
@@ -122,20 +121,13 @@ export async function POST(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
     if (existingInvoice) {
-      // Recalculate and update the existing invoice with latest pricing
       const subtotalExisting = Number(booking.baseFare);
-      const isInterStateExisting = data.isInterState ?? false;
-      const includeGstExisting = booking.includeGst;
-      const gstExisting = includeGstExisting
-        ? calculateGst(subtotalExisting, isInterStateExisting)
-        : { subtotal: subtotalExisting, cgstRate: 0, sgstRate: 0, igstRate: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalTax: 0 };
-
       const tollExisting = Number(booking.tollCharges || 0);
       const parkingExisting = Number(booking.parkingCharges || 0);
       const driverAllowanceExisting = Number(booking.driverAllowance || 0);
       const extraChargesExisting = Number(booking.extraCharges || 0);
       const discountExisting = Number(booking.discount || 0);
-      const grandTotalExisting = subtotalExisting + gstExisting.totalTax + tollExisting + parkingExisting + driverAllowanceExisting + extraChargesExisting - discountExisting;
+      const grandTotalExisting = subtotalExisting + tollExisting + parkingExisting + driverAllowanceExisting + extraChargesExisting - discountExisting;
 
       const paidResultExisting = await prisma.payment.aggregate({
         where: { bookingId: data.bookingId },
@@ -159,13 +151,13 @@ export async function POST(request: NextRequest) {
           customerState: booking.customer.state || null,
           serviceDescription: serviceDescExisting,
           subtotal: subtotalExisting,
-          cgstRate: gstExisting.cgstRate,
-          sgstRate: gstExisting.sgstRate,
-          igstRate: gstExisting.igstRate,
-          cgstAmount: gstExisting.cgstAmount,
-          sgstAmount: gstExisting.sgstAmount,
-          igstAmount: gstExisting.igstAmount,
-          totalTax: gstExisting.totalTax,
+          cgstRate: 0,
+          sgstRate: 0,
+          igstRate: 0,
+          cgstAmount: 0,
+          sgstAmount: 0,
+          igstAmount: 0,
+          totalTax: 0,
           tollCharges: tollExisting,
           parkingCharges: parkingExisting,
           driverAllowance: driverAllowanceExisting,
@@ -176,7 +168,7 @@ export async function POST(request: NextRequest) {
           amountInWords: amountToWords(Math.round(grandTotalExisting)),
           amountPaid: Math.round(amountPaidExisting),
           balanceDue: Math.round(balanceDueExisting),
-          isInterState: isInterStateExisting,
+          isInterState: false,
         },
         include: {
           booking: { select: { bookingId: true } },
@@ -187,20 +179,13 @@ export async function POST(request: NextRequest) {
       return successResponse(updated, 200);
     }
 
-    // Calculate GST
     const subtotal = Number(booking.baseFare);
-    const isInterState = data.isInterState ?? false;
-    const includeGst = booking.includeGst;
-    const gst = includeGst
-      ? calculateGst(subtotal, isInterState)
-      : { subtotal, cgstRate: 0, sgstRate: 0, igstRate: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalTax: 0 };
-
     const tollCharges = Number(booking.tollCharges || 0);
     const parkingCharges = Number(booking.parkingCharges || 0);
     const driverAllowance = Number(booking.driverAllowance || 0);
     const extraCharges = Number(booking.extraCharges || 0);
     const discount = Number(booking.discount || 0);
-    const grandTotal = subtotal + gst.totalTax + tollCharges + parkingCharges + driverAllowance + extraCharges - discount;
+    const grandTotal = subtotal + tollCharges + parkingCharges + driverAllowance + extraCharges - discount;
 
     const dueDate = data.dueDate || new Date(
       Date.now() + (settings.defaultPaymentDueDays || 7) * 24 * 60 * 60 * 1000
@@ -263,13 +248,13 @@ export async function POST(request: NextRequest) {
           sacCode: settings.defaultSacCode || "9964",
 
           subtotal,
-          cgstRate: gst.cgstRate,
-          sgstRate: gst.sgstRate,
-          igstRate: gst.igstRate,
-          cgstAmount: gst.cgstAmount,
-          sgstAmount: gst.sgstAmount,
-          igstAmount: gst.igstAmount,
-          totalTax: gst.totalTax,
+          cgstRate: 0,
+          sgstRate: 0,
+          igstRate: 0,
+          cgstAmount: 0,
+          sgstAmount: 0,
+          igstAmount: 0,
+          totalTax: 0,
           tollCharges,
           parkingCharges,
           driverAllowance,
@@ -281,7 +266,7 @@ export async function POST(request: NextRequest) {
           amountPaid: Math.round(amountPaid),
           balanceDue: Math.round(balanceDue),
 
-          isInterState,
+          isInterState: false,
           placeOfSupply: settings.companyState || null,
 
           termsAndConditions: data.termsAndConditions || settings.invoiceTerms || null,

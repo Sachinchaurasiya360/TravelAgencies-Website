@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -13,12 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  VEHICLE_TYPES,
-  TRIP_TYPES,
-} from "@/lib/constants";
 import { useT } from "@/lib/i18n/language-context";
-import { getVehicleTypeLabel, getTripTypeLabel } from "@/lib/i18n/label-maps";
 import { Loader2 } from "lucide-react";
 
 interface AdminBookingFormProps {
@@ -34,12 +28,6 @@ const initialForm = {
   pickupLocation: "",
   dropLocation: "",
   pickupTime: "",
-  vehicleType: "",
-  tripType: "",
-  returnDate: "",
-  passengerCount: "",
-  estimatedDistance: "",
-  specialRequests: "",
   status: "CONFIRMED",
 };
 
@@ -68,12 +56,6 @@ export function AdminBookingForm({ onSuccess, onCancel }: AdminBookingFormProps)
 
       if (form.email) payload.email = form.email;
       if (form.pickupTime) payload.pickupTime = form.pickupTime;
-      if (form.vehicleType) payload.vehicleType = form.vehicleType;
-      if (form.tripType) payload.tripType = form.tripType;
-      if (form.returnDate) payload.returnDate = form.returnDate;
-      if (form.passengerCount) payload.passengerCount = parseInt(form.passengerCount, 10);
-      if (form.estimatedDistance) payload.estimatedDistance = parseFloat(form.estimatedDistance);
-      if (form.specialRequests) payload.specialRequests = form.specialRequests;
 
       const res = await fetch("/api/bookings/admin", {
         method: "POST",
@@ -168,7 +150,7 @@ export function AdminBookingForm({ onSuccess, onCancel }: AdminBookingFormProps)
             </div>
           </div>
 
-          {/* Row 3: Vehicle, trip type, time */}
+          {/* Row 3: Pickup time */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <Label htmlFor="pickupTime">{t.bookingForm.pickupTime}</Label>
@@ -179,96 +161,9 @@ export function AdminBookingForm({ onSuccess, onCancel }: AdminBookingFormProps)
                 onChange={(e) => setForm({ ...form, pickupTime: e.target.value })}
               />
             </div>
-            <div>
-              <Label>{t.bookingForm.vehicleType}</Label>
-              <Select
-                value={form.vehicleType}
-                onValueChange={(v) => setForm({ ...form, vehicleType: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t.bookingForm.selectVehicle} />
-                </SelectTrigger>
-                <SelectContent>
-                  {VEHICLE_TYPES.map((vt) => (
-                    <SelectItem key={vt} value={vt}>
-                      {getVehicleTypeLabel(t, vt)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>{t.bookingForm.tripType}</Label>
-              <Select
-                value={form.tripType}
-                onValueChange={(v) => setForm({ ...form, tripType: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t.bookingForm.selectTripType} />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRIP_TYPES.map((tt) => (
-                    <SelectItem key={tt} value={tt}>
-                      {getTripTypeLabel(t, tt)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
-          {/* Row 4: Return date, passengers, distance */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {form.tripType === "ROUND_TRIP" && (
-              <div>
-                <Label htmlFor="returnDate">{t.bookingForm.returnDate}</Label>
-                <Input
-                  id="returnDate"
-                  type="date"
-                  value={form.returnDate}
-                  onChange={(e) => setForm({ ...form, returnDate: e.target.value })}
-                />
-              </div>
-            )}
-            <div>
-              <Label htmlFor="passengerCount">{t.bookingForm.passengers}</Label>
-              <Input
-                id="passengerCount"
-                type="number"
-                min="1"
-                max="60"
-                value={form.passengerCount}
-                onChange={(e) => setForm({ ...form, passengerCount: e.target.value })}
-                placeholder={t.bookingForm.passengersPlaceholder}
-              />
-            </div>
-            <div>
-              <Label htmlFor="estimatedDistance">{t.bookingForm.distance}</Label>
-              <Input
-                id="estimatedDistance"
-                type="number"
-                min="0"
-                step="0.1"
-                value={form.estimatedDistance}
-                onChange={(e) => setForm({ ...form, estimatedDistance: e.target.value })}
-                placeholder={t.bookingForm.distancePlaceholder}
-              />
-            </div>
-          </div>
-
-          {/* Row 5: Special requests */}
-          <div>
-            <Label htmlFor="specialRequests">{t.bookingForm.specialRequests}</Label>
-            <Textarea
-              id="specialRequests"
-              value={form.specialRequests}
-              onChange={(e) => setForm({ ...form, specialRequests: e.target.value })}
-              placeholder={t.bookingForm.specialRequestsPlaceholder}
-              rows={2}
-            />
-          </div>
-
-          {/* Row 6: Status + actions */}
+          {/* Row 5: Status + actions */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="w-48">
               <Label>{t.bookingForm.statusLabel}</Label>

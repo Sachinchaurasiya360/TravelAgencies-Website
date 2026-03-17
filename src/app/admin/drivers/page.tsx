@@ -12,13 +12,15 @@ import { PageHeader } from "@/components/shared/page-header";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { useT } from "@/lib/i18n/language-context";
 import { interpolate } from "@/lib/i18n";
-import { UserCheck, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { UserCheck, Plus, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import Link from "next/link";
 
 interface Driver {
   id: string;
   name: string;
-  email: string;
   phone: string | null;
+  vehicleName: string | null;
+  vehicleNumber: string | null;
   isActive: boolean;
   _count: { driverBookings: number };
 }
@@ -35,9 +37,9 @@ export default function DriversPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [formName, setFormName] = useState("");
-  const [formEmail, setFormEmail] = useState("");
   const [formPhone, setFormPhone] = useState("");
-  const [formPassword, setFormPassword] = useState("");
+  const [formVehicleName, setFormVehicleName] = useState("");
+  const [formVehicleNumber, setFormVehicleNumber] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fetchDrivers = useCallback(async () => {
@@ -71,18 +73,18 @@ export default function DriversPage() {
   function openAddDialog() {
     setEditingDriver(null);
     setFormName("");
-    setFormEmail("");
     setFormPhone("");
-    setFormPassword("");
+    setFormVehicleName("");
+    setFormVehicleNumber("");
     setDialogOpen(true);
   }
 
   function openEditDialog(driver: Driver) {
     setEditingDriver(driver);
     setFormName(driver.name);
-    setFormEmail(driver.email);
     setFormPhone(driver.phone || "");
-    setFormPassword("");
+    setFormVehicleName(driver.vehicleName || "");
+    setFormVehicleNumber(driver.vehicleNumber || "");
     setDialogOpen(true);
   }
 
@@ -90,16 +92,6 @@ export default function DriversPage() {
     if (!formName.trim() || !formPhone.trim()) {
       toast.error(t.drivers.namePhoneRequired);
       return;
-    }
-    if (!editingDriver) {
-      if (!formEmail.trim() || !formPassword.trim()) {
-        toast.error(t.drivers.emailPasswordRequired);
-        return;
-      }
-      if (formPassword.length < 8) {
-        toast.error(t.drivers.passwordMinLength);
-        return;
-      }
     }
     setSaving(true);
     try {
@@ -109,12 +101,8 @@ export default function DriversPage() {
         name: formName.trim(),
         phone: formPhone.trim(),
       };
-      if (!editingDriver) {
-        payload.email = formEmail.trim();
-        payload.password = formPassword;
-      } else if (formEmail.trim() !== editingDriver.email) {
-        payload.email = formEmail.trim();
-      }
+      if (formVehicleName.trim()) payload.vehicleName = formVehicleName.trim();
+      if (formVehicleNumber.trim()) payload.vehicleNumber = formVehicleNumber.trim();
 
       const res = await fetch(url, {
         method,
@@ -199,7 +187,7 @@ export default function DriversPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{driver.name}</p>
-                        <p className="text-xs text-gray-500">{driver.email}</p>
+                        <p className="text-xs text-gray-500">{driver.phone || "-"}</p>
                       </div>
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -212,10 +200,16 @@ export default function DriversPage() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-sm text-gray-500">
-                      <span>{driver.phone || "-"}</span>
+                      <span>{[driver.vehicleName, driver.vehicleNumber].filter(Boolean).join(" · ") || "-"}</span>
                       <span>{driver._count.driverBookings} {t.drivers.rides.toLowerCase()}</span>
                     </div>
                     <div className="flex gap-2 pt-1">
+                      <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" asChild>
+                        <Link href={`/admin/drivers/${driver.id}`}>
+                          <Eye className="mr-1 h-3 w-3" />
+                          {t.common.view}
+                        </Link>
+                      </Button>
                       <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => openEditDialog(driver)}>
                         {t.common.edit}
                       </Button>
@@ -233,8 +227,8 @@ export default function DriversPage() {
                   <thead>
                     <tr className="text-muted-foreground border-b text-left">
                       <th className="p-4 font-medium">{t.drivers.name}</th>
-                      <th className="p-4 font-medium">{t.drivers.email}</th>
                       <th className="p-4 font-medium">{t.drivers.phone}</th>
+                      <th className="p-4 font-medium">{t.drivers.vehicleName}</th>
                       <th className="p-4 font-medium">{t.drivers.rides}</th>
                       <th className="p-4 font-medium">{t.drivers.status}</th>
                       <th className="p-4 font-medium">{t.common.actions}</th>
@@ -244,8 +238,12 @@ export default function DriversPage() {
                     {drivers.map((driver) => (
                       <tr key={driver.id} className="border-b last:border-0 hover:bg-gray-50">
                         <td className="p-4 font-medium">{driver.name}</td>
-                        <td className="p-4 text-gray-500">{driver.email}</td>
                         <td className="p-4">{driver.phone || "-"}</td>
+                        <td className="p-4 text-gray-500">
+                          {driver.vehicleName || driver.vehicleNumber
+                            ? [driver.vehicleName, driver.vehicleNumber].filter(Boolean).join(" · ")
+                            : "-"}
+                        </td>
                         <td className="p-4">{driver._count.driverBookings}</td>
                         <td className="p-4">
                           <span
@@ -260,6 +258,11 @@ export default function DriversPage() {
                         </td>
                         <td className="p-4">
                           <div className="flex gap-2">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={`/admin/drivers/${driver.id}`}>
+                                {t.common.view}
+                              </Link>
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => openEditDialog(driver)}>
                               {t.common.edit}
                             </Button>
@@ -318,18 +321,6 @@ export default function DriversPage() {
               className="mt-1"
             />
           </div>
-          {!editingDriver && (
-            <div>
-              <Label>{t.drivers.emailRequired}</Label>
-              <Input
-                type="email"
-                placeholder={t.drivers.emailPlaceholder}
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          )}
           <div>
             <Label>{t.drivers.phoneRequired}</Label>
             <Input
@@ -339,18 +330,26 @@ export default function DriversPage() {
               className="mt-1"
             />
           </div>
-          {!editingDriver && (
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>{t.drivers.passwordRequired}</Label>
+              <Label>{t.drivers.vehicleName}</Label>
               <Input
-                type="password"
-                placeholder={t.drivers.passwordPlaceholder}
-                value={formPassword}
-                onChange={(e) => setFormPassword(e.target.value)}
+                placeholder={t.drivers.vehicleNamePlaceholder}
+                value={formVehicleName}
+                onChange={(e) => setFormVehicleName(e.target.value)}
                 className="mt-1"
               />
             </div>
-          )}
+            <div>
+              <Label>{t.drivers.vehicleNumber}</Label>
+              <Input
+                placeholder={t.drivers.vehicleNumberPlaceholder}
+                value={formVehicleNumber}
+                onChange={(e) => setFormVehicleNumber(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
         </div>
       </ConfirmDialog>
     </div>

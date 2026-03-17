@@ -108,6 +108,74 @@ export function statusUpdateEmail(data: {
   };
 }
 
+export function rideCompletionWithBillEmail(data: {
+  customerName: string;
+  bookingId: string;
+  pickupLocation: string;
+  dropLocation: string;
+  travelDate: string;
+  driverName?: string;
+  totalAmount: string;
+  invoiceUrl: string;
+  companyName: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `Ride Completed - Bill for #${data.bookingId} | ${data.companyName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #2563eb; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">${data.companyName}</h1>
+        </div>
+        <div style="padding: 20px;">
+          <h2 style="color: #16a34a;">Ride Completed Successfully!</h2>
+          <p>Dear ${data.customerName},</p>
+          <p>Thank you for travelling with us! Your ride has been completed successfully.</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Booking ID</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">#${data.bookingId}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Pickup</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${data.pickupLocation}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Drop</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${data.dropLocation}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Travel Date</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${data.travelDate}</td></tr>
+            ${data.driverName ? `<tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Driver</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${data.driverName}</td></tr>` : ""}
+            <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Total Amount</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #2563eb;">${data.totalAmount}</td></tr>
+          </table>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${data.invoiceUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">View & Download Bill</a>
+          </div>
+          <p style="color: #666; font-size: 13px;">Click the button above to view your invoice, download the bill, or sign it digitally.</p>
+          <p>We hope you had a great experience. Looking forward to serving you again!</p>
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">If you have any questions, contact us at +91 74981 25466</p>
+        </div>
+      </div>
+    `,
+  };
+}
+
+export function otpEmail(data: {
+  otp: string;
+  userEmail: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `Your Login Code - Sarthak Tour and Travels`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #2563eb; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">Sarthak Tour and Travels</h1>
+        </div>
+        <div style="padding: 20px;">
+          <h2>Login Verification Code</h2>
+          <p>A login attempt was made for <strong>${data.userEmail}</strong>.</p>
+          <p>Your one-time password is:</p>
+          <div style="text-align: center; margin: 24px 0; padding: 16px; background: #f3f4f6; border-radius: 8px;">
+            <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #111827;">${data.otp}</span>
+          </div>
+          <p style="color: #666;">This code will expire in <strong>10 minutes</strong>.</p>
+          <p style="color: #dc2626; font-size: 13px; margin-top: 24px;">If you did not request this code, please ignore this email.</p>
+        </div>
+      </div>
+    `,
+  };
+}
+
 export function paymentReminderEmail(data: {
   customerName: string;
   bookingId: string;

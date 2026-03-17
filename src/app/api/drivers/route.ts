@@ -4,6 +4,7 @@ import { successResponse, errorResponse, requireAdmin, getPaginationParams, pagi
 import { createDriverUserSchema } from "@/validators/driver.validator";
 import { Prisma } from "@prisma/client";
 import { hash } from "bcryptjs";
+import { randomUUID } from "crypto";
 
 // GET /api/drivers - List drivers (users with DRIVER role)
 export async function GET(request: NextRequest) {
@@ -23,7 +24,6 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
         { phone: { contains: search } },
-        { email: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -36,8 +36,9 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           name: true,
-          email: true,
           phone: true,
+          vehicleName: true,
+          vehicleNumber: true,
           isActive: true,
           createdAt: true,
           _count: { select: { driverBookings: true } },
@@ -70,26 +71,26 @@ export async function POST(request: NextRequest) {
 
     const cleanPhone = parsed.data.phone.replace(/^\+91/, "");
 
-    const existingEmail = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-    if (existingEmail) {
-      return errorResponse("A user with this email already exists", 400);
-    }
-
-    const passwordHash = await hash(parsed.data.password, 12);
+    // Auto-generate placeholder email and password (drivers use token-based access, not login)
+    const autoEmail = `driver-${randomUUID().slice(0, 8)}@placeholder.local`;
+    const passwordHash = await hash(randomUUID(), 12);
 
     const driver = await prisma.user.create({
       data: {
         name: parsed.data.name,
-        email: parsed.data.email,
+        email: autoEmail,
         phone: cleanPhone,
         passwordHash,
         role: "DRIVER",
+        vehicleName: parsed.data.vehicleName || null,
+        vehicleNumber: parsed.data.vehicleNumber || null,
       },
       select: {
         id: true,
         name: true,
-        email: true,
         phone: true,
+        vehicleName: true,
+        vehicleNumber: true,
         isActive: true,
         createdAt: true,
       },

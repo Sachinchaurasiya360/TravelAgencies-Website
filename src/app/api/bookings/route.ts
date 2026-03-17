@@ -100,7 +100,8 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Booking creation error:", error);
-    return errorResponse("Failed to create booking. Please try again.", 500);
+    const message = error instanceof Error ? error.message : "Failed to create booking. Please try again.";
+    return errorResponse(message, 500);
   }
 }
 

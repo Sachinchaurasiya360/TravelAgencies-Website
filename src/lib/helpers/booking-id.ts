@@ -6,26 +6,32 @@ type TxClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
 /**
  * Generate a booking ID atomically.
- * Uses date-prefixed sequential numbering: TA-20260315-0001
+ * Uses simple sequential numbering: 1, 2, 3, ...
  * Should be called inside a transaction (tx) for atomicity.
  */
 export async function generateBookingId(tx?: TxClient): Promise<string> {
   const db = tx || prisma;
-  const today = format(new Date(), "yyyyMMdd");
-  const prefix = `TA-${today}-`;
 
-  const lastBooking = await db.booking.findFirst({
-    where: { bookingId: { startsWith: prefix } },
-    orderBy: { bookingId: "desc" },
+  // Fetch all booking IDs to find the highest numeric one
+  // (handles mix of old "TA-..." format and new numeric format)
+  const allBookings = await db.booking.findMany({
     select: { bookingId: true },
   });
 
-  let seq = 1;
-  if (lastBooking) {
-    seq = parseInt(lastBooking.bookingId.split("-").pop() || "0", 10) + 1;
+  let maxSeq = 0;
+  for (const b of allBookings) {
+    const parsed = parseInt(b.bookingId, 10);
+    if (!isNaN(parsed) && parsed > maxSeq) {
+      maxSeq = parsed;
+    }
   }
 
-  return `${prefix}${seq.toString().padStart(4, "0")}`;
+  // If no numeric IDs exist yet, count total bookings so new IDs start after existing ones
+  if (maxSeq === 0 && allBookings.length > 0) {
+    maxSeq = allBookings.length;
+  }
+
+  return String(maxSeq + 1);
 }
 
 /** Generate an invoice number. Should be called inside a transaction. */

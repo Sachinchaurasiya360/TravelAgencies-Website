@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -215,9 +216,9 @@ export default function VendorsPage() {
                   <div key={vendor.id} className="px-4 py-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">
+                        <Link href={`/admin/vendors/${vendor.id}`} className="text-sm font-semibold text-gray-900 hover:text-blue-600 hover:underline">
                           {vendor.name}
-                        </p>
+                        </Link>
                         <p className="text-xs text-gray-500">
                           {vendor.phone}
                         </p>
@@ -242,6 +243,16 @@ export default function VendorsPage() {
                       </span>
                     </div>
                     <div className="flex gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-8 text-xs"
+                        asChild
+                      >
+                        <Link href={`/admin/vendors/${vendor.id}`}>
+                          {t.common.view}
+                        </Link>
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -292,7 +303,9 @@ export default function VendorsPage() {
                       >
                         <td className="p-4">
                           <div>
-                            <p className="font-medium">{vendor.name}</p>
+                            <Link href={`/admin/vendors/${vendor.id}`} className="font-medium hover:text-blue-600 hover:underline">
+                              {vendor.name}
+                            </Link>
                             {vendor.email && (
                               <p className="text-xs text-gray-500">
                                 {vendor.email}
@@ -320,6 +333,15 @@ export default function VendorsPage() {
                         </td>
                         <td className="p-4">
                           <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              asChild
+                            >
+                              <Link href={`/admin/vendors/${vendor.id}`}>
+                                {t.common.view}
+                              </Link>
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"

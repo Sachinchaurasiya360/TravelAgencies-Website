@@ -123,40 +123,21 @@ export async function GET(request: NextRequest) {
         };
       });
 
-    // Status and vehicle breakdowns (already efficient with groupBy)
-    const [statusGroups, vehicleGroups] = await Promise.all([
-      prisma.booking.groupBy({
-        by: ["status"],
-        _count: true,
-        where: bookingDateFilter,
-      }),
-      prisma.booking.groupBy({
-        by: ["vehicleType"],
-        _sum: { totalAmount: true },
-        _count: true,
-        where: {
-          ...bookingDateFilter,
-          status: "CONFIRMED",
-          vehicleType: { not: null },
-        },
-      }),
-    ]);
+    // Status breakdown (already efficient with groupBy)
+    const statusGroups = await prisma.booking.groupBy({
+      by: ["status"],
+      _count: true,
+      where: bookingDateFilter,
+    });
 
     const statusBreakdown = statusGroups.map((group) => ({
       status: group.status,
       count: group._count,
     }));
 
-    const vehicleBreakdown = vehicleGroups.map((group) => ({
-      vehicle: formatVehicleType(group.vehicleType),
-      count: group._count,
-      revenue: Math.round(Number(group._sum.totalAmount || 0)),
-    }));
-
     return successResponse({
       monthlyRevenue,
       statusBreakdown,
-      vehicleBreakdown,
       period,
     });
   } catch (error) {
@@ -165,10 +146,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function formatVehicleType(type: string | null): string {
-  if (!type) return "Unknown";
-  return type
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}

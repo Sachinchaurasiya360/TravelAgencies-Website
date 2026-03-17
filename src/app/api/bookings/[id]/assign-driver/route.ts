@@ -25,7 +25,7 @@ export async function PATCH(
 
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { id: true, bookingId: true, driverAccessToken: true },
+      select: { id: true, bookingId: true, driverAccessToken: true, customer: { select: { name: true } } },
     });
     if (!booking) return errorResponse("Booking not found", 404);
 
@@ -35,7 +35,7 @@ export async function PATCH(
     if (driverId) {
       driver = await prisma.user.findUnique({
         where: { id: driverId, role: "DRIVER" },
-        select: { id: true, name: true, phone: true, isActive: true },
+        select: { id: true, name: true, phone: true, isActive: true, vehicleName: true, vehicleNumber: true },
       });
       if (!driver) return errorResponse("Driver not found", 404);
       if (!driver.isActive) return errorResponse("Driver is inactive", 400);
@@ -50,6 +50,35 @@ export async function PATCH(
           : {}),
       },
     });
+
+    // Auto-create/update DutySlip when driver is assigned
+    if (driverId && driver) {
+      await prisma.dutySlip.upsert({
+        where: { bookingId: id },
+        create: {
+          bookingId: id,
+          driverId,
+          guestName: booking.customer?.name || "Guest",
+          vehicleName: driver.vehicleName,
+          vehicleNumber: driver.vehicleNumber,
+        },
+        update: {
+          driverId,
+          guestName: booking.customer?.name || "Guest",
+          vehicleName: driver.vehicleName,
+          vehicleNumber: driver.vehicleNumber,
+        },
+      });
+
+      logActivity({
+        action: ActivityAction.DUTY_SLIP_CREATED,
+        description: `Duty slip created for booking ${booking.bookingId}`,
+        userId: session.user.id,
+        entityType: "Booking",
+        entityId: booking.id,
+        metadata: { bookingId: booking.bookingId, driverName: driver.name },
+      }).catch(console.error);
+    }
 
     if (driver) {
       logActivity({

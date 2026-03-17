@@ -51,38 +51,32 @@ const services = [
   {
     icon: Car,
     title: "Sedan & Hatchback",
-    desc: "Swift Dzire, Etios & more for airport transfers and city commutes. Ideal for 1-4 passengers.",
-    passengers: "1-4",
+    desc: "Swift Dzire, Etios & more for airport transfers and city commutes.",
   },
   {
     icon: Car,
     title: "SUV & Innova",
     desc: "Innova Crysta, Ertiga & premium SUVs for family trips and outstation travel.",
-    passengers: "4-7",
   },
   {
     icon: Users,
     title: "Tempo Traveller",
     desc: "12 to 20-seater tempo travellers — perfect for group trips, pilgrimages & corporate outings.",
-    passengers: "12-20",
   },
   {
     icon: Bus,
     title: "Mini Bus & Coach",
     desc: "20 to 50-seater buses for weddings, corporate events, school trips & large group tours.",
-    passengers: "20-50",
   },
   {
     icon: Plane,
     title: "Airport Transfer",
     desc: "Reliable pickup and drop to Pune, Mumbai & Nashik airports. Flight tracking included.",
-    passengers: "1-7",
   },
   {
     icon: Navigation,
     title: "Outstation Trips",
     desc: "One-way and round-trip cab services to Lonavala, Mahabaleshwar, Shirdi, Goa & all of India.",
-    passengers: "1-50",
   },
 ];
 
@@ -98,7 +92,7 @@ const steps = [
     step: "01",
     icon: MapPin,
     title: "Submit Your Request",
-    desc: "Fill in pickup, drop, travel date, vehicle type, and passenger count in our simple booking form.",
+    desc: "Fill in pickup, drop, and travel date in our simple booking form.",
   },
   {
     step: "02",
@@ -296,10 +290,7 @@ export default function HomePage() {
                 <p className="mt-2 text-sm leading-relaxed text-gray-500">
                   {service.desc}
                 </p>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-600">
-                    {service.passengers} passengers
-                  </span>
+                <div className="mt-4 flex items-center justify-end">
                   <Link
                     href="/booking"
                     className="inline-flex items-center gap-1 text-sm font-semibold text-orange-500 transition-all hover:gap-2"

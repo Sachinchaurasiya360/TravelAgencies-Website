@@ -51,13 +51,10 @@ export async function POST(request: NextRequest) {
     return successResponse({
       bookingId: booking.bookingId,
       status: booking.status,
-      tripType: booking.tripType,
-      vehicleType: booking.vehicleType,
       travelDate: booking.travelDate,
       returnDate: booking.returnDate,
       pickupLocation: booking.pickupLocation,
       dropLocation: booking.dropLocation,
-      passengerCount: booking.passengerCount,
       totalAmount: booking.totalAmount,
       paymentStatus: booking.paymentStatus,
       createdAt: booking.createdAt,
@@ -85,14 +82,12 @@ export async function POST(request: NextRequest) {
       actualDistance: booking.actualDistance,
       pickupTime: booking.pickupTime,
       baseFare: booking.baseFare?.toString() ?? null,
-      taxAmount: booking.taxAmount?.toString() ?? null,
       tollCharges: booking.tollCharges?.toString() ?? null,
       parkingCharges: booking.parkingCharges?.toString() ?? null,
       driverAllowance: booking.driverAllowance?.toString() ?? null,
       extraCharges: booking.extraCharges?.toString() ?? null,
       extraChargesNote: booking.extraChargesNote,
       discount: booking.discount?.toString() ?? null,
-      includeGst: booking.includeGst,
     });
   } catch (error) {
     console.error("Track booking error:", error);

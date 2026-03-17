@@ -45,7 +45,7 @@ export function statusUpdateWhatsApp(
   bookingId: string,
   status: string,
   message: string,
-  pricing?: {
+  _pricing?: {
     totalAmount: string;
     tollCharges: number;
     extraChargesNote?: string;
@@ -56,36 +56,39 @@ export function statusUpdateWhatsApp(
     phone: string | null;
   }
 ): string {
-  const isCompleted = status === "Completed";
-  let text = isCompleted
-    ? `Hello! 🙏\n\n${message}\n\n*Booking:* ${bookingId}`
-    : `Booking Update\n\n*Booking:* ${bookingId}\n*Status:* ${status}\n\n${message}`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  if (driver && !isCompleted) {
-    text += `\n\n*Driver:* ${driver.name}`;
+  if (status === "Completed") {
+    let text = `Dear Customer,
+
+Thank you for travelling with *Sarthak Tour and Travels*!
+
+Your ride (Booking #${bookingId}) has been completed successfully. We hope you had a pleasant journey.
+
+Your invoice will be shared with you shortly.`;
+    text += `\n\nFor any queries, feel free to reach out to us.
+
+Warm regards,
+*Sarthak Tour and Travels*`;
+    return text;
+  }
+
+  // Confirmed / Cancelled / Other statuses
+  let text = `Dear Customer,
+
+*Booking #${bookingId}* — *${status}*
+
+${message}`;
+
+  if (driver) {
+    text += `\n\n*Driver Details:*\nName: ${driver.name}`;
     if (driver.phone) {
-      text += `\n*Driver Contact:* ${driver.phone}`;
+      text += `\nContact: ${driver.phone}`;
     }
   }
 
-  if (pricing) {
-    const priceLabel = isCompleted ? "*Total Amount:*" : "*Expected Price:*";
-    text += `\n\n${priceLabel} ${pricing.totalAmount}`;
-    if (!isCompleted && pricing.tollCharges > 0) {
-      text += `\nFastTag/Toll charges will be applicable as per actual.`;
-    }
-    if (!isCompleted && pricing.extraCharges > 0 && pricing.extraChargesNote) {
-      text += `\n${pricing.extraChargesNote}: Extra charges applicable.`;
-    }
-  }
-
-  if (isCompleted) {
-    text += `\n\nWe look forward to serving you again! 🚗`;
-  } else {
-    text += `\n\nTrack: ${process.env.NEXT_PUBLIC_APP_URL}/track`;
-  }
-
-  text += `\n\n- Sarthak Tour and Travels`;
+  text += `\n\nTrack your booking:\n${appUrl}/track`;
+  text += `\n\nWarm regards,\n*Sarthak Tour and Travels*`;
   return text;
 }
 

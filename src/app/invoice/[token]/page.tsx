@@ -19,10 +19,6 @@ interface InvoiceData {
   customerEmail: string | null;
   serviceDescription: string;
   subtotal: number;
-  cgstAmount: number;
-  sgstAmount: number;
-  igstAmount: number;
-  totalTax: number;
   tollCharges: number;
   parkingCharges: number;
   driverAllowance: number;
@@ -35,13 +31,13 @@ interface InvoiceData {
   balanceDue: number;
   signatureData: string | null;
   signedAt: string | null;
+  dutySlipSignatureData: string | null;
+  dutySlipSignedAt: string | null;
   booking: {
     bookingId: string;
     pickupLocation: string;
     dropLocation: string;
     travelDate: string;
-    vehicleType: string | null;
-    tripType: string | null;
   };
   bankDetails: {
     bankName: string | null;
@@ -72,7 +68,7 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
         const result = await res.json();
         if (result.success) {
           setInvoice(result.data);
-          if (result.data.signedAt) setSigned(true);
+          if (result.data.signedAt || result.data.dutySlipSignedAt) setSigned(true);
         } else {
           setError(result.error || "Invoice not found");
         }
@@ -263,12 +259,6 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
                 <span className="text-gray-600">Base Fare</span>
                 <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
               </div>
-              {invoice.totalTax > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">GST</span>
-                  <span className="font-medium">{formatCurrency(invoice.totalTax)}</span>
-                </div>
-              )}
               {invoice.tollCharges > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">FastTag / Toll</span>
@@ -347,16 +337,16 @@ export default function PublicInvoicePage({ params }: { params: Promise<{ token:
           <CardContent>
             {signed ? (
               <div className="space-y-3 text-center">
-                {invoice.signatureData && (
+                {(invoice.dutySlipSignatureData || invoice.signatureData) && (
                   <div className="mx-auto max-w-xs rounded border bg-white p-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={invoice.signatureData} alt="Signature" className="w-full" />
+                    <img src={(invoice.dutySlipSignatureData || invoice.signatureData)!} alt="Signature" className="w-full" />
                   </div>
                 )}
                 <div className="flex items-center justify-center gap-2 text-green-600">
                   <CheckCircle className="h-5 w-5" />
                   <p className="font-medium">
-                    Signed on {new Date(invoice.signedAt!).toLocaleDateString("en-IN", {
+                    Signed on {new Date((invoice.dutySlipSignedAt || invoice.signedAt)!).toLocaleDateString("en-IN", {
                       day: "numeric", month: "long", year: "numeric",
                       hour: "numeric", minute: "2-digit", hour12: true,
                     })}

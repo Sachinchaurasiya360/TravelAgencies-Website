@@ -22,13 +22,10 @@ export async function GET(
           booking: {
             select: {
               bookingId: true,
-              tripType: true,
-              vehicleType: true,
               travelDate: true,
               returnDate: true,
               pickupLocation: true,
               dropLocation: true,
-              passengerCount: true,
               estimatedDistance: true,
               actualDistance: true,
               startKm: true,
@@ -36,6 +33,9 @@ export async function GET(
               startDateTime: true,
               endDateTime: true,
               driverId: true,
+              dutySlip: {
+                select: { signatureData: true, signedAt: true },
+              },
             },
           },
           customer: true,
@@ -81,13 +81,6 @@ export async function GET(
       serviceDescription: invoice.serviceDescription,
       sacCode: invoice.sacCode,
       subtotal: invoice.subtotal.toString(),
-      cgstRate: invoice.cgstRate.toString(),
-      sgstRate: invoice.sgstRate.toString(),
-      igstRate: invoice.igstRate.toString(),
-      cgstAmount: invoice.cgstAmount.toString(),
-      sgstAmount: invoice.sgstAmount.toString(),
-      igstAmount: invoice.igstAmount.toString(),
-      totalTax: invoice.totalTax.toString(),
       tollCharges: invoice.tollCharges.toString(),
       parkingCharges: invoice.parkingCharges.toString(),
       driverAllowance: invoice.driverAllowance.toString(),
@@ -98,7 +91,6 @@ export async function GET(
       amountInWords: invoice.amountInWords,
       amountPaid: invoice.amountPaid.toString(),
       balanceDue: invoice.balanceDue.toString(),
-      isInterState: invoice.isInterState,
       termsAndConditions: invoice.termsAndConditions,
       bankName: settings?.bankName,
       bankAccountNumber: settings?.bankAccountNumber,
@@ -113,6 +105,8 @@ export async function GET(
       endDateTime: invoice.booking.endDateTime,
       signatureData: invoice.signatureData,
       signedAt: invoice.signedAt,
+      dutySlipSignatureData: invoice.booking.dutySlip?.signatureData,
+      dutySlipSignedAt: invoice.booking.dutySlip?.signedAt,
     });
 
     return new Response(html, {

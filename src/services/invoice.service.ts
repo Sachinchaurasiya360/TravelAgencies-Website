@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { generateInvoiceNumber } from "@/lib/helpers/booking-id";
-import { calculateGst } from "@/lib/helpers/gst";
 import { amountToWords } from "@/lib/helpers/currency";
 import { addDays } from "date-fns";
 
@@ -10,7 +9,6 @@ interface CreateInvoiceParams {
   serviceDescription?: string;
   termsAndConditions?: string;
   notes?: string;
-  isInterState?: boolean;
 }
 
 export async function createInvoice(params: CreateInvoiceParams) {
@@ -29,17 +27,14 @@ export async function createInvoice(params: CreateInvoiceParams) {
   if (!settings) throw new Error("App settings not found");
 
   const invoiceNumber = await generateInvoiceNumber();
-  const isInterState = params.isInterState ?? settings.isInterState;
   const subtotal = Number(booking.baseFare);
-  const gst = calculateGst(subtotal, isInterState);
 
   const tollCharges = Number(booking.tollCharges || 0);
   const driverAllowance = Number(booking.driverAllowance || 0);
   const extraCharges = Number(booking.extraCharges || 0);
   const discount = Number(booking.discount || 0);
 
-  const grandTotal =
-    subtotal + gst.totalTax + tollCharges + driverAllowance + extraCharges - discount;
+  const grandTotal = subtotal + tollCharges + driverAllowance + extraCharges - discount;
 
   const defaultDueDate = addDays(new Date(), settings.defaultPaymentDueDays);
 
@@ -76,13 +71,13 @@ export async function createInvoice(params: CreateInvoiceParams) {
       sacCode: settings.defaultSacCode,
 
       subtotal,
-      cgstRate: gst.cgstRate,
-      sgstRate: gst.sgstRate,
-      igstRate: gst.igstRate,
-      cgstAmount: gst.cgstAmount,
-      sgstAmount: gst.sgstAmount,
-      igstAmount: gst.igstAmount,
-      totalTax: gst.totalTax,
+      cgstRate: 0,
+      sgstRate: 0,
+      igstRate: 0,
+      cgstAmount: 0,
+      sgstAmount: 0,
+      igstAmount: 0,
+      totalTax: 0,
       tollCharges,
       driverAllowance,
       extraCharges,
@@ -90,7 +85,7 @@ export async function createInvoice(params: CreateInvoiceParams) {
       grandTotal: Math.round(grandTotal),
       amountInWords: amountToWords(Math.round(grandTotal)),
       balanceDue: Math.round(grandTotal),
-      isInterState,
+      isInterState: false,
 
       dueDate: params.dueDate || defaultDueDate,
       termsAndConditions: params.termsAndConditions || settings.invoiceTerms,

@@ -21,6 +21,7 @@ import {
   PanelLeft,
   Wallet,
   Truck,
+  ClipboardList,
 } from "lucide-react";
 import {
   Tooltip,
@@ -40,6 +41,7 @@ export function Sidebar() {
     { href: "/admin/customers", label: t.nav.customers, icon: Users },
     { href: "/admin/drivers", label: t.nav.drivers, icon: UserCheck },
     { href: "/admin/vendors", label: t.nav.vendors, icon: Truck },
+    { href: "/admin/duty-slips", label: t.nav.dutySlips, icon: ClipboardList },
     { href: "/admin/invoices", label: t.nav.invoices, icon: FileText },
     { href: "/admin/payments", label: t.nav.payments, icon: CreditCard },
     { href: "/admin/expenses", label: t.nav.expenses, icon: Wallet },

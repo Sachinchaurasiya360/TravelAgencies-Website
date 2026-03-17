@@ -17,20 +17,11 @@ interface RevenueSummary {
   totalRevenue: string | number;
   totalPaymentsCount: number;
   totalBookingValue: string | number;
-  totalTax: string | number;
   bookingCount: number;
-}
-
-interface VehicleBreakdown {
-  vehicleType: string | null;
-  totalAmount: string | number;
-  taxAmount: string | number;
-  count: number;
 }
 
 interface RevenueData {
   summary: RevenueSummary;
-  byVehicleType: VehicleBreakdown[];
   filters: { fromDate: string | null; toDate: string | null };
 }
 
@@ -163,19 +154,6 @@ export default function RevenueReportPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{t.revenueReport.taxCollected}</CardTitle>
-                <IndianRupee className="text-muted-foreground h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
-                  {formatCurrency(data.summary.totalTax)}
-                </div>
-                <p className="text-muted-foreground text-xs">{t.revenueReport.gstCollected}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">{t.revenueReport.bookingsLabel}</CardTitle>
                 <Car className="text-muted-foreground h-4 w-4" />
               </CardHeader>
@@ -188,47 +166,6 @@ export default function RevenueReportPage() {
             </Card>
           </div>
 
-          {/* Vehicle Type Breakdown */}
-          {data.byVehicleType.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">{t.revenueReport.revenueByVehicle}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-muted-foreground border-b text-left">
-                        <th className="p-3 font-medium">{t.revenueReport.vehicleType}</th>
-                        <th className="p-3 font-medium text-right">{t.revenueReport.bookings}</th>
-                        <th className="p-3 font-medium text-right">{t.revenueReport.revenue}</th>
-                        <th className="p-3 font-medium text-right">{t.revenueReport.tax}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.byVehicleType.map((item) => (
-                        <tr
-                          key={item.vehicleType || "unknown"}
-                          className="border-b last:border-0 hover:bg-gray-50"
-                        >
-                          <td className="p-3 font-medium">
-                            {item.vehicleType || t.revenueReport.notSpecified}
-                          </td>
-                          <td className="p-3 text-right">{item.count}</td>
-                          <td className="p-3 text-right">
-                            {formatCurrency(item.totalAmount)}
-                          </td>
-                          <td className="p-3 text-right">
-                            {formatCurrency(item.taxAmount)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </>
       ) : null}
     </div>

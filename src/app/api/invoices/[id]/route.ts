@@ -21,12 +21,9 @@ export async function GET(
         booking: {
           select: {
             bookingId: true,
-            tripType: true,
-            vehicleType: true,
             travelDate: true,
             pickupLocation: true,
             dropLocation: true,
-            passengerCount: true,
           },
         },
         customer: true,

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BOOKING_STATUSES, VEHICLE_TYPES, TRIP_TYPES } from "@/lib/constants";
+import { BOOKING_STATUSES } from "@/lib/constants";
 
 export const createBookingSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100).trim(),
@@ -25,7 +25,6 @@ export const assignPricingSchema = z.object({
   extraCharges: z.number().min(0).default(0),
   extraChargesNote: z.string().max(500).optional(),
   discount: z.number().min(0).default(0),
-  includeGst: z.boolean().default(false),
   paymentDueDate: z.coerce.date().optional(),
   actualDistance: z.number().min(0).max(100000).optional(),
   startKm: z.number().min(0).max(9999999).optional(),
@@ -60,10 +59,7 @@ export const adminCreateBookingSchema = z.object({
   pickupLocation: z.string().min(2, "Pickup location is required").max(500).trim(),
   dropLocation: z.string().min(2, "Drop location is required").max(500).trim(),
   pickupTime: z.string().max(20).optional(),
-  vehicleType: z.enum(VEHICLE_TYPES).optional(),
-  tripType: z.enum(TRIP_TYPES).optional(),
   returnDate: z.coerce.date().optional(),
-  passengerCount: z.number().int().min(1).max(60).optional(),
   estimatedDistance: z.number().positive().max(100000).optional(),
   specialRequests: z.string().max(1000).optional(),
   status: z.enum(["PENDING", "CONFIRMED"]).default("CONFIRMED"),

@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PageHeader } from "@/components/shared/page-header";
-import { Building2, Receipt, Landmark, Bell, Save } from "lucide-react";
+import { Building2, Bell, Save } from "lucide-react";
 import { useT } from "@/lib/i18n/language-context";
 
 interface Settings {
@@ -20,17 +20,6 @@ interface Settings {
   companyPhone: string;
   companyAddress: string;
   companyWebsite: string;
-  // GST Config
-  gstNumber: string;
-  gstRate: string;
-  sacCode: string;
-  placeOfSupply: string;
-  // Bank Details
-  bankName: string;
-  bankAccountNumber: string;
-  bankIfscCode: string;
-  bankAccountHolder: string;
-  bankBranch: string;
   // Notification Toggles
   emailNotifications: boolean;
   smsNotifications: boolean;
@@ -45,15 +34,6 @@ const defaultSettings: Settings = {
   companyPhone: "",
   companyAddress: "",
   companyWebsite: "",
-  gstNumber: "",
-  gstRate: "5",
-  sacCode: "9964",
-  placeOfSupply: "",
-  bankName: "",
-  bankAccountNumber: "",
-  bankIfscCode: "",
-  bankAccountHolder: "",
-  bankBranch: "",
   emailNotifications: true,
   smsNotifications: false,
   whatsappNotifications: false,
@@ -176,124 +156,6 @@ export default function SettingsPage() {
                 onChange={(e) => updateField("companyAddress", e.target.value)}
                 className="mt-1"
               />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* GST Config */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Receipt className="h-5 w-5" />
-              {t.settings.gstConfig}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="gstNumber">{t.settings.gstNumber}</Label>
-                <Input
-                  id="gstNumber"
-                  value={settings.gstNumber}
-                  onChange={(e) => updateField("gstNumber", e.target.value)}
-                  placeholder={t.settings.gstNumberPlaceholder}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="gstRate">{t.settings.gstRate}</Label>
-                <Input
-                  id="gstRate"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={settings.gstRate}
-                  onChange={(e) => updateField("gstRate", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="sacCode">{t.settings.sacCode}</Label>
-                <Input
-                  id="sacCode"
-                  value={settings.sacCode}
-                  onChange={(e) => updateField("sacCode", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="placeOfSupply">{t.settings.placeOfSupply}</Label>
-                <Input
-                  id="placeOfSupply"
-                  value={settings.placeOfSupply}
-                  onChange={(e) => updateField("placeOfSupply", e.target.value)}
-                  placeholder={t.settings.placeOfSupplyPlaceholder}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Bank Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Landmark className="h-5 w-5" />
-              {t.settings.bankDetails}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="bankName">{t.settings.bankName}</Label>
-                <Input
-                  id="bankName"
-                  value={settings.bankName}
-                  onChange={(e) => updateField("bankName", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="bankAccountHolder">{t.settings.accountHolderName}</Label>
-                <Input
-                  id="bankAccountHolder"
-                  value={settings.bankAccountHolder}
-                  onChange={(e) =>
-                    updateField("bankAccountHolder", e.target.value)
-                  }
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="bankAccountNumber">{t.settings.accountNumber}</Label>
-                <Input
-                  id="bankAccountNumber"
-                  value={settings.bankAccountNumber}
-                  onChange={(e) =>
-                    updateField("bankAccountNumber", e.target.value)
-                  }
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="bankIfscCode">{t.settings.ifscCode}</Label>
-                <Input
-                  id="bankIfscCode"
-                  value={settings.bankIfscCode}
-                  onChange={(e) => updateField("bankIfscCode", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="bankBranch">{t.settings.branch}</Label>
-                <Input
-                  id="bankBranch"
-                  value={settings.bankBranch}
-                  onChange={(e) => updateField("bankBranch", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
             </div>
           </CardContent>
         </Card>

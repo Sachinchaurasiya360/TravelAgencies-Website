@@ -9,7 +9,7 @@ export const updateSettingsSchema = z
     companyState: z.string().max(100),
     companyStateCode: z.string().max(5),
     companyPincode: z.string().max(10),
-    companyPhone: z.string().max(20),
+    companyPhone: z.string().max(25),
     companyEmail: z.string().email(),
     companyWebsite: z.string().max(200),
     companyGstin: z

@@ -28,11 +28,9 @@ interface PLData {
   expenses: {
     totalRefunds: number;
     refundCount: number;
-    totalTaxLiability: number;
   };
   summary: {
     netRevenue: number;
-    netRevenueAfterTax: number;
   };
 }
 
@@ -147,20 +145,6 @@ export default function ProfitLossPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{t.profitLoss.netAfterTax}</CardTitle>
-                <IndianRupee className="text-muted-foreground h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-blue-600">
-                  {formatCurrency(data.summary.netRevenueAfterTax)}
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  {t.profitLoss.afterGstLiability}
-                </p>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Income & Expenses Breakdown */}
@@ -211,12 +195,6 @@ export default function ProfitLossPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.profitLoss.refundCount}</span>
                   <span className="font-medium">{data.expenses.refundCount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.profitLoss.gstLiability}</span>
-                  <span className="font-medium text-red-600">
-                    {formatCurrency(data.expenses.totalTaxLiability)}
-                  </span>
                 </div>
               </CardContent>
             </Card>

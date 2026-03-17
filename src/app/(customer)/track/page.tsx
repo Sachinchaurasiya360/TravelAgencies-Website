@@ -20,7 +20,7 @@ import {
   IndianRupee,
   FileText,
   CreditCard,
-  Car,
+
 } from "lucide-react";
 
 interface BookingData {
@@ -37,19 +37,15 @@ interface BookingData {
   completedAt: string | null;
   cancelledAt: string | null;
   cancellationReason: string | null;
-  vehicleType: string | null;
-  tripType: string | null;
   estimatedDistance: number | null;
   actualDistance: number | null;
   baseFare: string | null;
-  taxAmount: string | null;
   tollCharges: string | null;
   parkingCharges: string | null;
   driverAllowance: string | null;
   extraCharges: string | null;
   extraChargesNote: string | null;
   discount: string | null;
-  includeGst: boolean;
   driver: { name: string; phone: string } | null;
   payments: { amount: string; method: string; paymentDate: string; isAdvance: boolean }[];
   invoices: { invoiceNumber: string; grandTotal: string; shareToken: string | null; signedAt: string | null }[];
@@ -246,26 +242,6 @@ function TrackPageContent() {
                     <span className="font-medium">{booking.pickupTime}</span>
                   </div>
                 )}
-                {booking.vehicleType && (
-                  <div className="flex items-center gap-2">
-                    <Car className="text-muted-foreground h-4 w-4" />
-                    <span className="text-muted-foreground">Vehicle:</span>
-                    <span className="font-medium">
-                      {
-                        { SEDAN: "Sedan", SUV: "SUV", INNOVA: "Innova", INNOVA_CRYSTA: "Innova Crysta", TEMPO_TRAVELLER: "Tempo Traveller", BUS: "Bus" }[booking.vehicleType] ?? booking.vehicleType
-                      }
-                    </span>
-                  </div>
-                )}
-                {booking.tripType && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="text-muted-foreground h-4 w-4" />
-                    <span className="text-muted-foreground">Trip:</span>
-                    <span className="font-medium">
-                      {booking.tripType === "ONE_WAY" ? "One Way" : "Round Trip"}
-                    </span>
-                  </div>
-                )}
                 {(booking.actualDistance || booking.estimatedDistance) && (
                   <div className="flex items-center gap-2">
                     <MapPin className="text-muted-foreground h-4 w-4" />
@@ -346,12 +322,6 @@ function TrackPageContent() {
                   <span className="text-muted-foreground">Base Fare</span>
                   <span>{formatCurrency(booking.baseFare)}</span>
                 </div>
-                {booking.includeGst && parseFloat(booking.taxAmount || "0") > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">GST (5%)</span>
-                    <span>{formatCurrency(booking.taxAmount)}</span>
-                  </div>
-                )}
                 {parseFloat(booking.tollCharges || "0") > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Toll / FastTag</span>

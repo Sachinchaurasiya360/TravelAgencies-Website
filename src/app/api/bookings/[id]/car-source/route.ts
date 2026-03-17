@@ -30,7 +30,7 @@ export async function PATCH(
 
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { id: true, bookingId: true },
+      select: { id: true, bookingId: true, customer: { select: { name: true } } },
     });
     if (!booking) return errorResponse("Booking not found", 404);
 
@@ -52,6 +52,18 @@ export async function PATCH(
           carSource: "VENDOR_CAR",
           vendorId,
           vendorCost: vendorCost ?? null,
+        },
+      });
+
+      // Auto-create duty slip for vendor bookings (vendor acts as driver)
+      await prisma.dutySlip.upsert({
+        where: { bookingId: id },
+        create: {
+          bookingId: id,
+          guestName: booking.customer?.name || "Guest",
+        },
+        update: {
+          guestName: booking.customer?.name || "Guest",
         },
       });
 

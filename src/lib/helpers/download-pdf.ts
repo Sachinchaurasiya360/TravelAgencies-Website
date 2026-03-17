@@ -67,24 +67,19 @@ export async function downloadInvoicePdf(
     const canvasRatio = canvas.height / canvas.width;
     const imgHeight = pdfWidth * canvasRatio;
 
-    // Handle multi-page if content exceeds one page
-    let yOffset = 0;
-    let remainingHeight = imgHeight;
-
-    while (remainingHeight > 0) {
-      if (yOffset > 0) pdf.addPage();
-
-      pdf.addImage(
-        imgData,
-        "PNG",
-        0,
-        -yOffset,
-        pdfWidth,
-        imgHeight
-      );
-
-      yOffset += pdfHeight;
-      remainingHeight -= pdfHeight;
+    // If content fits on one page (with 5mm tolerance), render single page
+    // Otherwise paginate
+    if (imgHeight <= pdfHeight + 5) {
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, imgHeight);
+    } else {
+      let yOffset = 0;
+      let remainingHeight = imgHeight;
+      while (remainingHeight > 5) {
+        if (yOffset > 0) pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, -yOffset, pdfWidth, imgHeight);
+        yOffset += pdfHeight;
+        remainingHeight -= pdfHeight;
+      }
     }
 
     // Download the PDF

@@ -39,36 +39,19 @@ export async function GET(request: NextRequest) {
       _count: true,
     });
 
-    // Total tax from completed/active bookings
-    const taxResult = await prisma.booking.aggregate({
+    const bookingResult = await prisma.booking.aggregate({
       where: bookingWhere,
-      _sum: { taxAmount: true, totalAmount: true },
+      _sum: { totalAmount: true },
       _count: true,
-    });
-
-    // Breakdown by vehicle type
-    const vehicleBreakdown = await prisma.booking.groupBy({
-      by: ["vehicleType"],
-      where: bookingWhere,
-      _sum: { totalAmount: true, taxAmount: true },
-      _count: true,
-      orderBy: { _count: { vehicleType: "desc" } },
     });
 
     return successResponse({
       summary: {
         totalRevenue: revenueResult._sum.amount || 0,
         totalPaymentsCount: revenueResult._count,
-        totalBookingValue: taxResult._sum.totalAmount || 0,
-        totalTax: taxResult._sum.taxAmount || 0,
-        bookingCount: taxResult._count,
+        totalBookingValue: bookingResult._sum.totalAmount || 0,
+        bookingCount: bookingResult._count,
       },
-      byVehicleType: vehicleBreakdown.map((item) => ({
-        vehicleType: item.vehicleType,
-        totalAmount: item._sum.totalAmount || 0,
-        taxAmount: item._sum.taxAmount || 0,
-        count: item._count,
-      })),
       filters: {
         fromDate: fromDate || null,
         toDate: toDate || null,

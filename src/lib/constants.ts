@@ -1,7 +1,3 @@
-export const GST_RATE = 5.0;
-export const CGST_RATE = 2.5;
-export const SGST_RATE = 2.5;
-export const IGST_RATE = 5.0;
 export const DEFAULT_SAC_CODE = "9964";
 export const DEFAULT_PAYMENT_DUE_DAYS = 7;
 
@@ -58,25 +54,10 @@ export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
   OTHER: "Other",
 };
 
-export const VEHICLE_TYPES = [
-  "CAR_SEDAN", "CAR_SUV", "CAR_HATCHBACK", "CAR_LUXURY",
-  "TEMPO_TRAVELLER", "MINI_BUS", "BUS", "OTHER",
-] as const;
 
-export const VEHICLE_TYPE_LABELS: Record<string, string> = {
-  CAR_SEDAN: "Sedan",
-  CAR_SUV: "SUV",
-  CAR_HATCHBACK: "Hatchback",
-  CAR_LUXURY: "Luxury Car",
-  TEMPO_TRAVELLER: "Tempo Traveller",
-  MINI_BUS: "Mini Bus",
-  BUS: "Bus",
-  OTHER: "Other",
-};
+export const DUTY_SLIP_STATUSES = ["PENDING", "SUBMITTED"] as const;
 
-export const TRIP_TYPES = ["ONE_WAY", "ROUND_TRIP"] as const;
-
-export const TRIP_TYPE_LABELS: Record<string, string> = {
-  ONE_WAY: "One Way",
-  ROUND_TRIP: "Round Trip",
+export const DUTY_SLIP_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pending",
+  SUBMITTED: "Submitted",
 };

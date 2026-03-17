@@ -18,7 +18,14 @@ export async function POST(
   try {
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { id: true, bookingId: true, driverAccessToken: true },
+      select: {
+        id: true,
+        bookingId: true,
+        driverAccessToken: true,
+        carSource: true,
+        customer: { select: { name: true } },
+        dutySlip: { select: { id: true } },
+      },
     });
     if (!booking) return errorResponse("Booking not found", 404);
 
@@ -28,6 +35,16 @@ export async function POST(
       await prisma.booking.update({
         where: { id },
         data: { driverAccessToken: token },
+      });
+    }
+
+    // Ensure duty slip exists (for both OWN_CAR and VENDOR_CAR)
+    if (!booking.dutySlip) {
+      await prisma.dutySlip.create({
+        data: {
+          bookingId: id,
+          guestName: booking.customer?.name || "Guest",
+        },
       });
     }
 

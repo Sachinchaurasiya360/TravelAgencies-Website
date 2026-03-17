@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NotificationChannel, NotificationType, NotificationStatus } from "@prisma/client";
-import { sendEmail, bookingConfirmationEmail, statusUpdateEmail, paymentReminderEmail } from "./email.service";
+import { sendEmail, bookingConfirmationEmail, statusUpdateEmail, paymentReminderEmail, rideCompletionWithBillEmail } from "./email.service";
 import { generateWhatsAppUrl, bookingConfirmationWhatsApp, statusUpdateWhatsApp, paymentReminderWhatsApp } from "./whatsapp.service";
 import { BOOKING_STATUS_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/helpers/currency";
@@ -217,6 +217,83 @@ export async function sendPaymentReminderNotification(booking: {
         bookingId: booking.id,
       });
     }
+  }
+
+  return results;
+}
+
+export async function sendCompletionWithBill(booking: {
+  id: string;
+  bookingId: string;
+  pickupLocation: string;
+  dropLocation: string;
+  travelDate: Date;
+  totalAmount: unknown;
+  customer: { name: string; phone: string; email: string | null };
+  driver?: { name: string } | null;
+}, invoiceUrl: string, companyName: string): Promise<NotificationResult[]> {
+  const results: NotificationResult[] = [];
+  const settings = await prisma.settings.findUnique({ where: { id: "app_settings" } });
+
+  if (settings?.emailEnabled && booking.customer.email) {
+    const emailData = rideCompletionWithBillEmail({
+      customerName: booking.customer.name,
+      bookingId: booking.bookingId,
+      pickupLocation: booking.pickupLocation,
+      dropLocation: booking.dropLocation,
+      travelDate: booking.travelDate.toLocaleDateString("en-IN"),
+      driverName: booking.driver?.name,
+      totalAmount: formatCurrency(booking.totalAmount as string),
+      invoiceUrl,
+      companyName,
+    });
+    const result = await sendEmail({
+      to: booking.customer.email,
+      subject: emailData.subject,
+      html: emailData.html,
+    });
+    results.push({ channel: "EMAIL", ...result });
+    await logNotification({
+      channel: "EMAIL",
+      type: "STATUS_UPDATE",
+      status: result.success ? "SENT" : "FAILED",
+      recipientEmail: booking.customer.email,
+      subject: emailData.subject,
+      body: emailData.html,
+      bookingId: booking.id,
+      providerMessageId: result.messageId,
+      errorMessage: result.error,
+    });
+  }
+
+  // WhatsApp — generate wa.me URL with bill link
+  if (settings?.whatsappEnabled) {
+    const amount = formatCurrency(booking.totalAmount as string);
+    const waBody = `Dear ${booking.customer.name},
+
+Thank you for travelling with *${companyName}*!
+
+Your ride (Booking *#${booking.bookingId}*) has been completed successfully. We hope you had a pleasant journey.
+
+*Total Amount:* ${amount}
+
+You can view and download your invoice here:
+${invoiceUrl}
+
+For any queries, feel free to reach out to us.
+
+Warm regards,
+*${companyName}*`;
+    const whatsappUrl = generateWhatsAppUrl(booking.customer.phone, waBody);
+    results.push({ channel: "WHATSAPP", success: true, whatsappUrl });
+    await logNotification({
+      channel: "WHATSAPP",
+      type: "STATUS_UPDATE",
+      status: "SENT",
+      recipientPhone: booking.customer.phone,
+      body: waBody,
+      bookingId: booking.id,
+    });
   }
 
   return results;
