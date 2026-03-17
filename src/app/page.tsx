@@ -193,7 +193,7 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-orange-500 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
+                  className="border-orange-500 bg-transparent text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
                   asChild
                 >
                   <Link href="/track">Track Booking</Link>
@@ -201,7 +201,7 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white/20 text-gray-300 hover:bg-white/5 hover:text-white"
+                  className="border-white/20 bg-transparent text-gray-300 hover:bg-white/5 hover:text-white"
                   asChild
                 >
                   <Link href="/admin/login">

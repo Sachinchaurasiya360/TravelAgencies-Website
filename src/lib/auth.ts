@@ -34,6 +34,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
+        // Drivers no longer log in — they use shareable links
+        if (user.role === "DRIVER") {
+          return null;
+        }
+
         await prisma.user.update({
           where: { id: user.id },
           data: { lastLoginAt: new Date() },

@@ -20,6 +20,7 @@ export async function GET(
       include: {
         customer: true,
         driver: { select: { id: true, name: true, phone: true } },
+        vendor: { select: { id: true, name: true, phone: true } },
         invoices: {
           select: { id: true, invoiceNumber: true, status: true, grandTotal: true, shareToken: true, signedAt: true, createdAt: true },
           orderBy: { createdAt: "desc" },

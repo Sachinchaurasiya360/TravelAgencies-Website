@@ -1,21 +1,17 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { successResponse, errorResponse, requireDriver } from "@/lib/api-helpers";
+import { successResponse, errorResponse } from "@/lib/api-helpers";
 
-// GET /api/driver/bookings/[id] - Get single booking detail for driver
+// GET /api/driver/ride/[token] - Public: fetch booking by driver access token
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ token: string }> }
 ) {
-  const session = await requireDriver();
-  if (!session) return errorResponse("Unauthorized", 401);
-
-  const { id } = await params;
-  const driverId = session.user.id;
+  const { token } = await params;
 
   try {
     const booking = await prisma.booking.findUnique({
-      where: { id },
+      where: { driverAccessToken: token },
       include: {
         customer: { select: { name: true, phone: true, email: true } },
         invoices: {
@@ -43,16 +39,11 @@ export async function GET(
       },
     });
 
-    if (!booking) return errorResponse("Booking not found", 404);
-
-    // Verify this booking belongs to the driver
-    if (booking.driverId !== driverId) {
-      return errorResponse("Access denied", 403);
-    }
+    if (!booking) return errorResponse("Ride not found", 404);
 
     return successResponse(booking);
   } catch (error) {
-    console.error("Driver booking detail error:", error);
-    return errorResponse("Failed to fetch booking", 500);
+    console.error("Driver ride token error:", error);
+    return errorResponse("Failed to fetch ride", 500);
   }
 }

@@ -4,6 +4,7 @@ import { successResponse, errorResponse, requireAdmin } from "@/lib/api-helpers"
 import { assignDriverSchema } from "@/validators/driver.validator";
 import { ActivityAction } from "@prisma/client";
 import { logActivity } from "@/services/activity-log.service";
+import { randomUUID } from "crypto";
 
 // PATCH /api/bookings/[id]/assign-driver
 export async function PATCH(
@@ -24,7 +25,7 @@ export async function PATCH(
 
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { id: true, bookingId: true },
+      select: { id: true, bookingId: true, driverAccessToken: true },
     });
     if (!booking) return errorResponse("Booking not found", 404);
 
@@ -42,7 +43,12 @@ export async function PATCH(
 
     await prisma.booking.update({
       where: { id },
-      data: { driverId },
+      data: {
+        driverId,
+        ...(!booking.driverAccessToken && driverId
+          ? { driverAccessToken: randomUUID() }
+          : {}),
+      },
     });
 
     if (driver) {

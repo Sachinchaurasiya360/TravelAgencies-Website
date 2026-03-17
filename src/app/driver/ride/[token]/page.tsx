@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback, use } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,9 +17,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDate } from "@/lib/helpers/date";
-import { PAYMENT_METHOD_LABELS } from "@/lib/constants";
 import {
-  ArrowLeft,
   MapPin,
   Calendar,
   Clock,
@@ -42,6 +39,7 @@ import {
 import { useT } from "@/lib/i18n/language-context";
 import { interpolate } from "@/lib/i18n";
 import { getStatusLabel, getPaymentMethodLabel } from "@/lib/i18n/label-maps";
+import { downloadInvoicePdf } from "@/lib/helpers/download-pdf";
 
 interface BookingDetail {
   id: string;
@@ -56,6 +54,10 @@ interface BookingDetail {
   dropAddress: string | null;
   estimatedDistance: number | null;
   actualDistance: number | null;
+  startKm: number | null;
+  endKm: number | null;
+  startDateTime: string | null;
+  endDateTime: string | null;
   vehicleType: string | null;
   vehiclePreference: string | null;
   passengerCount: number | null;
@@ -95,12 +97,12 @@ interface BookingDetail {
   }[];
 }
 
-export default function RideDetailPage({
+export default function DriverRidePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ token: string }>;
 }) {
-  const { id } = use(params);
+  const { token } = use(params);
   const t = useT();
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,6 +119,10 @@ export default function RideDetailPage({
     extraChargesNote: "",
     discount: "0",
     includeGst: false,
+    startKm: "",
+    endKm: "",
+    startDateTime: "",
+    endDateTime: "",
   });
   const [pricingLoading, setPricingLoading] = useState(false);
 
@@ -134,11 +140,14 @@ export default function RideDetailPage({
   // Bill generation & sharing
   const [billLoading, setBillLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [downloadLoading, setDownloadLoading] = useState(false);
 
   // Signature panel
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [signatureToken, setSignatureToken] = useState<string | null>(null);
-  const [signatureInvoiceId, setSignatureInvoiceId] = useState<string | null>(null);
+  const [signatureInvoiceId, setSignatureInvoiceId] = useState<string | null>(
+    null
+  );
   const [hasDrawn, setHasDrawn] = useState(false);
   const [signing, setSigning] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -147,7 +156,7 @@ export default function RideDetailPage({
 
   const fetchBooking = useCallback(async () => {
     try {
-      const res = await fetch(`/api/driver/bookings/${id}`);
+      const res = await fetch(`/api/driver/ride/${token}`);
       const result = await res.json();
       if (result.success) {
         setBooking(result.data);
@@ -159,7 +168,7 @@ export default function RideDetailPage({
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [token, t.driver.fetchFailed]);
 
   useEffect(() => {
     fetchBooking();
@@ -189,7 +198,8 @@ export default function RideDetailPage({
 
     function startDraw(e: MouseEvent | TouchEvent) {
       isDrawingRef.current = true;
-      const pos = e instanceof MouseEvent ? getPos(e) : getPos(e.touches[0]);
+      const pos =
+        e instanceof MouseEvent ? getPos(e) : getPos(e.touches[0]);
       ctx!.beginPath();
       ctx!.moveTo(pos.x, pos.y);
     }
@@ -197,7 +207,8 @@ export default function RideDetailPage({
     function draw(e: MouseEvent | TouchEvent) {
       if (!isDrawingRef.current) return;
       e.preventDefault();
-      const pos = e instanceof MouseEvent ? getPos(e) : getPos(e.touches[0]);
+      const pos =
+        e instanceof MouseEvent ? getPos(e) : getPos(e.touches[0]);
       ctx!.lineTo(pos.x, pos.y);
       ctx!.stroke();
       setHasDrawn(true);
@@ -235,11 +246,14 @@ export default function RideDetailPage({
     setHasDrawn(false);
   }
 
-  // Get share token for an invoice (creates one if needed)
-  async function getShareToken(invoiceId: string): Promise<string | null> {
+  async function getShareToken(
+    invoiceId: string
+  ): Promise<string | null> {
     try {
-      const res = await fetch(`/api/invoices/${invoiceId}/share`, {
+      const res = await fetch(`/api/driver/ride/${token}/share`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
       });
       const result = await res.json();
       if (result.success) {
@@ -253,24 +267,38 @@ export default function RideDetailPage({
     }
   }
 
-  async function openSignaturePanel(invoiceId: string, existingToken?: string | null) {
+  async function openSignaturePanel(
+    invoiceId: string,
+    existingToken?: string | null
+  ) {
     if (existingToken) {
       setSignatureToken(existingToken);
       setSignatureInvoiceId(invoiceId);
       setSignatureOpen(true);
       setHasDrawn(false);
-      setTimeout(() => signatureSectionRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      setTimeout(
+        () =>
+          signatureSectionRef.current?.scrollIntoView({
+            behavior: "smooth",
+          }),
+        100
+      );
       return;
     }
-    // Need to get a share token first
-    const token = await getShareToken(invoiceId);
-    if (token) {
-      setSignatureToken(token);
+    const shareToken = await getShareToken(invoiceId);
+    if (shareToken) {
+      setSignatureToken(shareToken);
       setSignatureInvoiceId(invoiceId);
       setSignatureOpen(true);
       setHasDrawn(false);
-      await fetchBooking(); // refresh to get the shareToken in invoice data
-      setTimeout(() => signatureSectionRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      await fetchBooking();
+      setTimeout(
+        () =>
+          signatureSectionRef.current?.scrollIntoView({
+            behavior: "smooth",
+          }),
+        100
+      );
     }
   }
 
@@ -308,7 +336,7 @@ export default function RideDetailPage({
     e.preventDefault();
     setPricingLoading(true);
     try {
-      const res = await fetch(`/api/bookings/${id}/assign-pricing`, {
+      const res = await fetch(`/api/driver/ride/${token}/pricing`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -321,6 +349,10 @@ export default function RideDetailPage({
           extraChargesNote: pricing.extraChargesNote || undefined,
           discount: parseFloat(pricing.discount) || 0,
           includeGst: pricing.includeGst,
+          ...(pricing.startKm && { startKm: parseFloat(pricing.startKm) }),
+          ...(pricing.endKm && { endKm: parseFloat(pricing.endKm) }),
+          ...(pricing.startDateTime && { startDateTime: pricing.startDateTime }),
+          ...(pricing.endDateTime && { endDateTime: pricing.endDateTime }),
         }),
       });
       const result = await res.json();
@@ -342,11 +374,10 @@ export default function RideDetailPage({
     e.preventDefault();
     setPaymentLoading(true);
     try {
-      const res = await fetch("/api/payments", {
+      const res = await fetch(`/api/driver/ride/${token}/payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          bookingId: id,
           amount: parseFloat(paymentForm.amount),
           method: paymentForm.method,
           isAdvance: paymentForm.isAdvance,
@@ -359,7 +390,13 @@ export default function RideDetailPage({
         toast.success(t.driver.paymentRecorded);
         await fetchBooking();
         setPaymentOpen(false);
-        setPaymentForm({ amount: "", method: "CASH", isAdvance: false, transactionRef: "", notes: "" });
+        setPaymentForm({
+          amount: "",
+          method: "CASH",
+          isAdvance: false,
+          transactionRef: "",
+          notes: "",
+        });
       } else {
         toast.error(result.error || t.driver.paymentRecorded);
       }
@@ -373,11 +410,10 @@ export default function RideDetailPage({
   async function handleGenerateBill() {
     setBillLoading(true);
     try {
-      // 1. Create invoice
-      const res = await fetch("/api/invoices", {
+      const res = await fetch(`/api/driver/ride/${token}/invoice`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingId: id }),
+        body: JSON.stringify({}),
       });
       const result = await res.json();
       if (!result.success) {
@@ -388,17 +424,21 @@ export default function RideDetailPage({
       const invoiceId = result.data.id;
       toast.success(t.driver.billGenerated);
 
-      // 2. Get share token for signature
-      const token = await getShareToken(invoiceId);
+      const shareToken = await getShareToken(invoiceId);
       await fetchBooking();
 
-      // 3. Open signature panel
-      if (token) {
-        setSignatureToken(token);
+      if (shareToken) {
+        setSignatureToken(shareToken);
         setSignatureInvoiceId(invoiceId);
         setSignatureOpen(true);
         setHasDrawn(false);
-        setTimeout(() => signatureSectionRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+        setTimeout(
+          () =>
+            signatureSectionRef.current?.scrollIntoView({
+              behavior: "smooth",
+            }),
+          100
+        );
       }
     } catch {
       toast.error(t.driver.billFailed);
@@ -410,8 +450,10 @@ export default function RideDetailPage({
   async function handleShareBill(invoiceId: string) {
     setShareLoading(true);
     try {
-      const res = await fetch(`/api/invoices/${invoiceId}/share`, {
+      const res = await fetch(`/api/driver/ride/${token}/share`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
       });
       const result = await res.json();
       if (result.success) {
@@ -429,34 +471,42 @@ export default function RideDetailPage({
     }
   }
 
+  async function handleDownloadBill(invoiceId: string, invoiceNumber?: string) {
+    setDownloadLoading(true);
+    try {
+      await downloadInvoicePdf(invoiceId, invoiceNumber);
+    } catch {
+      toast.error(t.driver.billFailed);
+    } finally {
+      setDownloadLoading(false);
+    }
+  }
+
   if (loading) return <LoadingSpinner />;
   if (!booking) {
     return (
       <div className="mx-auto max-w-lg py-12 text-center">
         <p className="text-gray-500">{t.driver.rideNotFound}</p>
-        <Button variant="outline" className="mt-4" asChild>
-          <Link href="/driver">{t.driver.backToRides}</Link>
-        </Button>
       </div>
     );
   }
 
   const hasCharges = Number(booking.baseFare || 0) > 0;
-  const latestUnsignedInvoice = booking.invoices.find((inv) => !inv.signedAt);
+  const latestUnsignedInvoice = booking.invoices.find(
+    (inv) => !inv.signedAt
+  );
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-8">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
-          <Link href="/driver">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold">#{booking.bookingId}</h1>
-            <StatusBadge status={booking.status} label={getStatusLabel(t, booking.status)} />
+            <StatusBadge
+              status={booking.status}
+              label={getStatusLabel(t, booking.status)}
+            />
           </div>
         </div>
       </div>
@@ -484,7 +534,11 @@ export default function RideDetailPage({
             {booking.returnDate && (
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Calendar className="h-4 w-4 text-gray-400" />
-                <span>{interpolate(t.driver.returnDate, { date: formatDate(booking.returnDate) })}</span>
+                <span>
+                  {interpolate(t.driver.returnDate, {
+                    date: formatDate(booking.returnDate),
+                  })}
+                </span>
               </div>
             )}
 
@@ -492,9 +546,13 @@ export default function RideDetailPage({
               <div className="flex items-start gap-2">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
                 <div>
-                  <p className="text-sm font-medium">{booking.pickupLocation}</p>
+                  <p className="text-sm font-medium">
+                    {booking.pickupLocation}
+                  </p>
                   {booking.pickupAddress && (
-                    <p className="text-xs text-gray-500">{booking.pickupAddress}</p>
+                    <p className="text-xs text-gray-500">
+                      {booking.pickupAddress}
+                    </p>
                   )}
                 </div>
               </div>
@@ -502,26 +560,39 @@ export default function RideDetailPage({
               <div className="flex items-start gap-2">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                 <div>
-                  <p className="text-sm font-medium">{booking.dropLocation}</p>
+                  <p className="text-sm font-medium">
+                    {booking.dropLocation}
+                  </p>
                   {booking.dropAddress && (
-                    <p className="text-xs text-gray-500">{booking.dropAddress}</p>
+                    <p className="text-xs text-gray-500">
+                      {booking.dropAddress}
+                    </p>
                   )}
                 </div>
               </div>
             </div>
 
-            {(booking.estimatedDistance || booking.actualDistance || booking.vehiclePreference || booking.passengerCount) && (
+            {(booking.estimatedDistance ||
+              booking.actualDistance ||
+              booking.vehiclePreference ||
+              booking.passengerCount) && (
               <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                 {booking.estimatedDistance && (
                   <span className="flex items-center gap-1">
                     <Route className="h-3.5 w-3.5" />
-                    {interpolate(t.driver.distanceKm, { distance: booking.estimatedDistance })}
+                    {interpolate(t.driver.distanceKm, {
+                      distance: booking.estimatedDistance,
+                    })}
                   </span>
                 )}
                 {booking.actualDistance && (
                   <div>
-                    <p className="text-muted-foreground text-xs">{t.driver.totalKmDriven}</p>
-                    <p className="text-sm font-medium">{booking.actualDistance} km</p>
+                    <p className="text-muted-foreground text-xs">
+                      {t.driver.totalKmDriven}
+                    </p>
+                    <p className="text-sm font-medium">
+                      {booking.actualDistance} km
+                    </p>
                   </div>
                 )}
                 {booking.vehiclePreference && (
@@ -533,15 +604,48 @@ export default function RideDetailPage({
                 {booking.passengerCount && (
                   <span className="flex items-center gap-1">
                     <Users className="h-3.5 w-3.5" />
-                    {interpolate(t.driver.passengersCount, { count: booking.passengerCount })}
+                    {interpolate(t.driver.passengersCount, {
+                      count: booking.passengerCount,
+                    })}
                   </span>
+                )}
+              </div>
+            )}
+
+            {(booking.startKm != null || booking.endKm != null || booking.startDateTime || booking.endDateTime) && (
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                {booking.startKm != null && (
+                  <div>
+                    <p className="text-gray-500">{t.bookingDetail.startKm}</p>
+                    <p className="font-medium text-sm">{booking.startKm} km</p>
+                  </div>
+                )}
+                {booking.endKm != null && (
+                  <div>
+                    <p className="text-gray-500">{t.bookingDetail.endKm}</p>
+                    <p className="font-medium text-sm">{booking.endKm} km</p>
+                  </div>
+                )}
+                {booking.startDateTime && (
+                  <div>
+                    <p className="text-gray-500">{t.bookingDetail.startDateTime}</p>
+                    <p className="font-medium text-sm">{new Date(booking.startDateTime).toLocaleString("en-IN")}</p>
+                  </div>
+                )}
+                {booking.endDateTime && (
+                  <div>
+                    <p className="text-gray-500">{t.bookingDetail.endDateTime}</p>
+                    <p className="font-medium text-sm">{new Date(booking.endDateTime).toLocaleString("en-IN")}</p>
+                  </div>
                 )}
               </div>
             )}
 
             {booking.specialRequests && (
               <p className="text-xs text-gray-500 bg-yellow-50 rounded p-2">
-                {interpolate(t.driver.noteLabel, { note: booking.specialRequests })}
+                {interpolate(t.driver.noteLabel, {
+                  note: booking.specialRequests,
+                })}
               </p>
             )}
           </div>
@@ -567,7 +671,9 @@ export default function RideDetailPage({
           </div>
           <p className="text-xs text-gray-500">{booking.customer.phone}</p>
           {booking.customer.email && (
-            <p className="text-xs text-gray-500">{booking.customer.email}</p>
+            <p className="text-xs text-gray-500">
+              {booking.customer.email}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -580,36 +686,45 @@ export default function RideDetailPage({
               <IndianRupee className="h-4 w-4 text-blue-500" />
               {t.driver.pricing}
             </h2>
-            {hasCharges && !pricingOpen && !booking.invoices?.some((inv) => inv.signedAt) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => {
-                  setPricing({
-                    actualDistance: booking.actualDistance?.toString() || "",
-                    baseFare: booking.baseFare || "",
-                    tollCharges: booking.tollCharges || "0",
-                    parkingCharges: booking.parkingCharges || "0",
-                    driverAllowance: booking.driverAllowance || "0",
-                    extraCharges: booking.extraCharges || "0",
-                    extraChargesNote: booking.extraChargesNote || "",
-                    discount: booking.discount || "0",
-                    includeGst: booking.includeGst,
-                  });
-                  setPricingOpen(true);
-                }}
-              >
-                <Pencil className="mr-1 h-3 w-3" />
-                {t.common.edit}
-              </Button>
-            )}
+            {hasCharges &&
+              !pricingOpen &&
+              !booking.invoices?.some((inv) => inv.signedAt) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    setPricing({
+                      actualDistance:
+                        booking.actualDistance?.toString() || "",
+                      baseFare: booking.baseFare || "",
+                      tollCharges: booking.tollCharges || "0",
+                      parkingCharges: booking.parkingCharges || "0",
+                      driverAllowance: booking.driverAllowance || "0",
+                      extraCharges: booking.extraCharges || "0",
+                      extraChargesNote: booking.extraChargesNote || "",
+                      discount: booking.discount || "0",
+                      includeGst: booking.includeGst,
+                      startKm: booking.startKm?.toString() || "",
+                      endKm: booking.endKm?.toString() || "",
+                      startDateTime: booking.startDateTime ? new Date(booking.startDateTime).toISOString().slice(0, 16) : "",
+                      endDateTime: booking.endDateTime ? new Date(booking.endDateTime).toISOString().slice(0, 16) : "",
+                    });
+                    setPricingOpen(true);
+                  }}
+                >
+                  <Pencil className="mr-1 h-3 w-3" />
+                  {t.common.edit}
+                </Button>
+              )}
           </div>
 
           {pricingOpen ? (
             <form onSubmit={handlePricingSubmit} className="space-y-3">
               <div>
-                <Label htmlFor="actualDistance" className="text-xs">{t.driver.actualDistance}</Label>
+                <Label htmlFor="actualDistance" className="text-xs">
+                  {t.driver.actualDistance}
+                </Label>
                 <Input
                   id="actualDistance"
                   type="number"
@@ -617,96 +732,164 @@ export default function RideDetailPage({
                   min="0"
                   placeholder={t.driver.actualDistancePlaceholder}
                   value={pricing.actualDistance}
-                  onChange={(e) => setPricing({ ...pricing, actualDistance: e.target.value })}
+                  onChange={(e) =>
+                    setPricing({
+                      ...pricing,
+                      actualDistance: e.target.value,
+                    })
+                  }
                   className="mt-1 h-9"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="startKm" className="text-xs">{t.bookingDetail.startKm}</Label>
+                  <Input id="startKm" type="number" step="0.1" min="0" value={pricing.startKm} onChange={(e) => setPricing({ ...pricing, startKm: e.target.value })} className="mt-1 h-9" placeholder="0" />
+                </div>
+                <div>
+                  <Label htmlFor="endKm" className="text-xs">{t.bookingDetail.endKm}</Label>
+                  <Input id="endKm" type="number" step="0.1" min="0" value={pricing.endKm} onChange={(e) => setPricing({ ...pricing, endKm: e.target.value })} className="mt-1 h-9" placeholder="0" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="startDateTime" className="text-xs">{t.bookingDetail.startDateTime}</Label>
+                  <Input id="startDateTime" type="datetime-local" value={pricing.startDateTime} onChange={(e) => setPricing({ ...pricing, startDateTime: e.target.value })} className="mt-1 h-9" />
+                </div>
+                <div>
+                  <Label htmlFor="endDateTime" className="text-xs">{t.bookingDetail.endDateTime}</Label>
+                  <Input id="endDateTime" type="datetime-local" value={pricing.endDateTime} onChange={(e) => setPricing({ ...pricing, endDateTime: e.target.value })} className="mt-1 h-9" />
+                </div>
+              </div>
               <div>
-                <Label htmlFor="baseFare" className="text-xs">{t.driver.baseFareRequired}</Label>
+                <Label htmlFor="baseFare" className="text-xs">
+                  {t.driver.baseFareRequired}
+                </Label>
                 <Input
                   id="baseFare"
                   type="number"
                   step="1"
                   min="0"
                   value={pricing.baseFare}
-                  onChange={(e) => setPricing({ ...pricing, baseFare: e.target.value })}
+                  onChange={(e) =>
+                    setPricing({ ...pricing, baseFare: e.target.value })
+                  }
                   required
                   className="mt-1 h-9"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="tollCharges" className="text-xs">{t.driver.fastTagToll}</Label>
+                  <Label htmlFor="tollCharges" className="text-xs">
+                    {t.driver.fastTagToll}
+                  </Label>
                   <Input
                     id="tollCharges"
                     type="number"
                     step="1"
                     min="0"
                     value={pricing.tollCharges}
-                    onChange={(e) => setPricing({ ...pricing, tollCharges: e.target.value })}
+                    onChange={(e) =>
+                      setPricing({
+                        ...pricing,
+                        tollCharges: e.target.value,
+                      })
+                    }
                     className="mt-1 h-9"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="parkingCharges" className="text-xs">{t.driver.parking}</Label>
+                  <Label htmlFor="parkingCharges" className="text-xs">
+                    {t.driver.parking}
+                  </Label>
                   <Input
                     id="parkingCharges"
                     type="number"
                     step="1"
                     min="0"
                     value={pricing.parkingCharges}
-                    onChange={(e) => setPricing({ ...pricing, parkingCharges: e.target.value })}
+                    onChange={(e) =>
+                      setPricing({
+                        ...pricing,
+                        parkingCharges: e.target.value,
+                      })
+                    }
                     className="mt-1 h-9"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="driverAllowance" className="text-xs">{t.driver.driverAllowance}</Label>
+                  <Label htmlFor="driverAllowance" className="text-xs">
+                    {t.driver.driverAllowance}
+                  </Label>
                   <Input
                     id="driverAllowance"
                     type="number"
                     step="1"
                     min="0"
                     value={pricing.driverAllowance}
-                    onChange={(e) => setPricing({ ...pricing, driverAllowance: e.target.value })}
+                    onChange={(e) =>
+                      setPricing({
+                        ...pricing,
+                        driverAllowance: e.target.value,
+                      })
+                    }
                     className="mt-1 h-9"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="discount" className="text-xs">{t.driver.discount}</Label>
+                  <Label htmlFor="discount" className="text-xs">
+                    {t.driver.discount}
+                  </Label>
                   <Input
                     id="discount"
                     type="number"
                     step="1"
                     min="0"
                     value={pricing.discount}
-                    onChange={(e) => setPricing({ ...pricing, discount: e.target.value })}
+                    onChange={(e) =>
+                      setPricing({ ...pricing, discount: e.target.value })
+                    }
                     className="mt-1 h-9"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="extraChargesNote" className="text-xs">{t.driver.otherChargesName}</Label>
+                  <Label htmlFor="extraChargesNote" className="text-xs">
+                    {t.driver.otherChargesName}
+                  </Label>
                   <Input
                     id="extraChargesNote"
                     type="text"
                     placeholder={t.driver.otherChargesPlaceholder}
                     value={pricing.extraChargesNote}
-                    onChange={(e) => setPricing({ ...pricing, extraChargesNote: e.target.value })}
+                    onChange={(e) =>
+                      setPricing({
+                        ...pricing,
+                        extraChargesNote: e.target.value,
+                      })
+                    }
                     className="mt-1 h-9"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="extraCharges" className="text-xs">{t.driver.otherCharges}</Label>
+                  <Label htmlFor="extraCharges" className="text-xs">
+                    {t.driver.otherCharges}
+                  </Label>
                   <Input
                     id="extraCharges"
                     type="number"
                     step="1"
                     min="0"
                     value={pricing.extraCharges}
-                    onChange={(e) => setPricing({ ...pricing, extraCharges: e.target.value })}
+                    onChange={(e) =>
+                      setPricing({
+                        ...pricing,
+                        extraCharges: e.target.value,
+                      })
+                    }
                     className="mt-1 h-9"
                   />
                 </div>
@@ -716,15 +899,28 @@ export default function RideDetailPage({
                   type="checkbox"
                   id="includeGst"
                   checked={pricing.includeGst}
-                  onChange={(e) => setPricing({ ...pricing, includeGst: e.target.checked })}
+                  onChange={(e) =>
+                    setPricing({
+                      ...pricing,
+                      includeGst: e.target.checked,
+                    })
+                  }
                   className="h-4 w-4 rounded border-gray-300 accent-orange-500"
                 />
-                <Label htmlFor="includeGst" className="text-xs font-normal cursor-pointer">
+                <Label
+                  htmlFor="includeGst"
+                  className="text-xs font-normal cursor-pointer"
+                >
                   {t.driver.addGst}
                 </Label>
               </div>
               <div className="flex gap-2">
-                <Button type="submit" disabled={pricingLoading} size="sm" className="flex-1">
+                <Button
+                  type="submit"
+                  disabled={pricingLoading}
+                  size="sm"
+                  className="flex-1"
+                >
                   {pricingLoading ? t.common.saving : t.driver.savePricing}
                 </Button>
                 <Button
@@ -740,35 +936,55 @@ export default function RideDetailPage({
           ) : hasCharges ? (
             <div className="space-y-1.5 text-sm">
               <Row label={t.driver.baseFare} value={booking.baseFare} />
-              {booking.includeGst && Number(booking.taxAmount || 0) > 0 && (
-                <Row label={t.driver.gst} value={booking.taxAmount} />
-              )}
+              {booking.includeGst &&
+                Number(booking.taxAmount || 0) > 0 && (
+                  <Row label={t.driver.gst} value={booking.taxAmount} />
+                )}
               {Number(booking.tollCharges || 0) > 0 && (
-                <Row label={t.driver.fastTagToll} value={booking.tollCharges} />
+                <Row
+                  label={t.driver.fastTagToll}
+                  value={booking.tollCharges}
+                />
               )}
               {Number(booking.parkingCharges || 0) > 0 && (
-                <Row label={t.driver.parking} value={booking.parkingCharges} />
+                <Row
+                  label={t.driver.parking}
+                  value={booking.parkingCharges}
+                />
               )}
               {Number(booking.driverAllowance || 0) > 0 && (
-                <Row label={t.driver.driverAllowance} value={booking.driverAllowance} />
+                <Row
+                  label={t.driver.driverAllowance}
+                  value={booking.driverAllowance}
+                />
               )}
               {Number(booking.extraCharges || 0) > 0 && (
                 <Row
-                  label={booking.extraChargesNote || t.driver.otherCharges}
+                  label={
+                    booking.extraChargesNote || t.driver.otherCharges
+                  }
                   value={booking.extraCharges}
                 />
               )}
               {Number(booking.discount || 0) > 0 && (
-                <Row label={t.driver.discount} value={`-${booking.discount}`} isDiscount />
+                <Row
+                  label={t.driver.discount}
+                  value={`-${booking.discount}`}
+                  isDiscount
+                />
               )}
               <div className="border-t pt-2 flex items-center justify-between font-semibold">
                 <span>{t.driver.total}</span>
-                <span>{formatCurrency(booking.totalAmount || "0")}</span>
+                <span>
+                  {formatCurrency(booking.totalAmount || "0")}
+                </span>
               </div>
             </div>
           ) : (
             <div className="py-3 text-center">
-              <p className="text-xs text-gray-500 mb-2">{t.driver.noPricingAssigned}</p>
+              <p className="text-xs text-gray-500 mb-2">
+                {t.driver.noPricingAssigned}
+              </p>
               <Button
                 variant="outline"
                 size="sm"
@@ -800,32 +1016,41 @@ export default function RideDetailPage({
                   disabled={billLoading}
                 >
                   <Plus className="mr-1 h-3 w-3" />
-                  {billLoading ? t.common.generating : t.driver.generateBill}
+                  {billLoading
+                    ? t.common.generating
+                    : t.driver.generateBill}
                 </Button>
               ) : (
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => window.open(`/api/invoices/${booking.invoices.find((inv) => inv.signedAt)!.id}/pdf`, "_blank")}
+                  onClick={() => {
+                    const signedInv = booking.invoices.find((inv) => inv.signedAt)!;
+                    handleDownloadBill(signedInv.id, signedInv.invoiceNumber);
+                  }}
+                  disabled={downloadLoading}
                 >
                   <FileText className="mr-1 h-3 w-3" />
-                  {t.driver.downloadBill}
+                  {downloadLoading ? t.common.processing : t.driver.downloadBill}
                 </Button>
               )}
             </div>
 
             {booking.invoices.length > 0 ? (
-              <div className="space-y-2">
-                {booking.invoices.map((inv) => (
-                  <div
-                    key={inv.id}
-                    className="rounded-lg bg-gray-50 p-3 space-y-2"
-                  >
+              (() => {
+                const inv = booking.invoices[0];
+                return (
+                  <div className="rounded-lg bg-gray-50 p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{inv.invoiceNumber}</span>
-                        <StatusBadge status={inv.status} label={getStatusLabel(t, inv.status)} />
+                        <span className="text-sm font-medium">
+                          {inv.invoiceNumber}
+                        </span>
+                        <StatusBadge
+                          status={inv.status}
+                          label={getStatusLabel(t, inv.status)}
+                        />
                         {inv.signedAt && (
                           <span className="inline-flex items-center gap-0.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-800">
                             <CheckCircle className="h-2.5 w-2.5" />
@@ -833,24 +1058,29 @@ export default function RideDetailPage({
                           </span>
                         )}
                       </div>
-                      <span className="text-sm font-medium">{formatCurrency(inv.grandTotal)}</span>
+                      <span className="text-sm font-medium">
+                        {formatCurrency(inv.grandTotal)}
+                      </span>
                     </div>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         className="h-7 text-xs flex-1"
-                        onClick={() => window.open(`/api/invoices/${inv.id}/pdf`, "_blank")}
+                        onClick={() => handleDownloadBill(inv.id, inv.invoiceNumber)}
+                        disabled={downloadLoading}
                       >
                         <FileText className="mr-1 h-3 w-3" />
-                        {t.driver.viewPdf}
+                        {downloadLoading ? t.common.processing : t.driver.downloadBill}
                       </Button>
                       {!inv.signedAt ? (
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-7 text-xs flex-1"
-                          onClick={() => openSignaturePanel(inv.id, inv.shareToken)}
+                          onClick={() =>
+                            openSignaturePanel(inv.id, inv.shareToken)
+                          }
                         >
                           <PenTool className="mr-1 h-3 w-3" />
                           {t.driver.getSignature}
@@ -869,10 +1099,12 @@ export default function RideDetailPage({
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })()
             ) : (
-              <p className="text-xs text-gray-500 text-center py-2">{t.driver.noBillsGenerated}</p>
+              <p className="text-xs text-gray-500 text-center py-2">
+                {t.driver.noBillsGenerated}
+              </p>
             )}
           </CardContent>
         </Card>
@@ -914,7 +1146,9 @@ export default function RideDetailPage({
                   className="flex-1 bg-orange-500 hover:bg-orange-600"
                 >
                   <Send className="mr-1 h-3 w-3" />
-                  {signing ? t.common.submitting : t.driver.submitSignature}
+                  {signing
+                    ? t.common.submitting
+                    : t.driver.submitSignature}
                 </Button>
                 <Button
                   variant="ghost"
@@ -943,7 +1177,10 @@ export default function RideDetailPage({
               {t.driver.paymentsSection}
             </h2>
             <div className="flex items-center gap-2">
-              <StatusBadge status={booking.paymentStatus} label={getStatusLabel(t, booking.paymentStatus)} />
+              <StatusBadge
+                status={booking.paymentStatus}
+                label={getStatusLabel(t, booking.paymentStatus)}
+              />
               {hasCharges && booking.paymentStatus !== "PAID" && (
                 <Button
                   variant="ghost"
@@ -959,7 +1196,8 @@ export default function RideDetailPage({
                       parseFloat(booking.totalAmount || "0") - totalPaid
                     );
                     setPaymentForm({
-                      amount: remaining > 0 ? remaining.toString() : "",
+                      amount:
+                        remaining > 0 ? remaining.toString() : "",
                       method: "CASH",
                       isAdvance: false,
                       transactionRef: "",
@@ -976,47 +1214,71 @@ export default function RideDetailPage({
           </div>
 
           {paymentOpen && (
-            <form onSubmit={handleRecordPayment} className="space-y-3 rounded-lg border p-3">
+            <form
+              onSubmit={handleRecordPayment}
+              className="space-y-3 rounded-lg border p-3"
+            >
               <div>
-                <Label htmlFor="payAmount" className="text-xs">{t.driver.amountRequired}</Label>
+                <Label htmlFor="payAmount" className="text-xs">
+                  {t.driver.amountRequired}
+                </Label>
                 <Input
                   id="payAmount"
                   type="number"
                   step="1"
                   min="1"
                   value={paymentForm.amount}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                  onChange={(e) =>
+                    setPaymentForm({
+                      ...paymentForm,
+                      amount: e.target.value,
+                    })
+                  }
                   required
                   className="mt-1 h-9"
                 />
               </div>
               <div>
-                <Label htmlFor="payMethod" className="text-xs">{t.driver.methodRequired}</Label>
+                <Label htmlFor="payMethod" className="text-xs">
+                  {t.driver.methodRequired}
+                </Label>
                 <Select
                   value={paymentForm.method}
                   onValueChange={(v) =>
-                    setPaymentForm({ ...paymentForm, method: v as "CASH" | "ONLINE" })
+                    setPaymentForm({
+                      ...paymentForm,
+                      method: v as "CASH" | "ONLINE",
+                    })
                   }
                 >
                   <SelectTrigger className="mt-1 h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CASH">{t.paymentMethods.cash}</SelectItem>
-                    <SelectItem value="ONLINE">{t.paymentMethods.online}</SelectItem>
+                    <SelectItem value="CASH">
+                      {t.paymentMethods.cash}
+                    </SelectItem>
+                    <SelectItem value="ONLINE">
+                      {t.paymentMethods.online}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {paymentForm.method === "ONLINE" && (
                 <div>
-                  <Label htmlFor="transactionRef" className="text-xs">{t.driver.transactionRef}</Label>
+                  <Label htmlFor="transactionRef" className="text-xs">
+                    {t.driver.transactionRef}
+                  </Label>
                   <Input
                     id="transactionRef"
                     type="text"
                     placeholder={t.driver.transactionRefPlaceholder}
                     value={paymentForm.transactionRef}
                     onChange={(e) =>
-                      setPaymentForm({ ...paymentForm, transactionRef: e.target.value })
+                      setPaymentForm({
+                        ...paymentForm,
+                        transactionRef: e.target.value,
+                      })
                     }
                     className="mt-1 h-9"
                   />
@@ -1028,28 +1290,48 @@ export default function RideDetailPage({
                   id="isAdvance"
                   checked={paymentForm.isAdvance}
                   onChange={(e) =>
-                    setPaymentForm({ ...paymentForm, isAdvance: e.target.checked })
+                    setPaymentForm({
+                      ...paymentForm,
+                      isAdvance: e.target.checked,
+                    })
                   }
                   className="h-4 w-4 rounded border-gray-300 accent-orange-500"
                 />
-                <Label htmlFor="isAdvance" className="cursor-pointer text-xs font-normal">
+                <Label
+                  htmlFor="isAdvance"
+                  className="cursor-pointer text-xs font-normal"
+                >
                   {t.driver.advancePayment}
                 </Label>
               </div>
               <div>
-                <Label htmlFor="payNotes" className="text-xs">{t.driver.notes}</Label>
+                <Label htmlFor="payNotes" className="text-xs">
+                  {t.driver.notes}
+                </Label>
                 <Input
                   id="payNotes"
                   type="text"
                   placeholder={t.driver.notesPlaceholder}
                   value={paymentForm.notes}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                  onChange={(e) =>
+                    setPaymentForm({
+                      ...paymentForm,
+                      notes: e.target.value,
+                    })
+                  }
                   className="mt-1 h-9"
                 />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" size="sm" disabled={paymentLoading} className="flex-1">
-                  {paymentLoading ? t.common.saving : t.driver.savePayment}
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={paymentLoading}
+                  className="flex-1"
+                >
+                  {paymentLoading
+                    ? t.common.saving
+                    : t.driver.savePayment}
                 </Button>
                 <Button
                   type="button"
@@ -1086,7 +1368,9 @@ export default function RideDetailPage({
               ))}
             </div>
           ) : !paymentOpen ? (
-            <p className="text-xs text-gray-500 text-center py-2">{t.driver.noPaymentsRecorded}</p>
+            <p className="text-xs text-gray-500 text-center py-2">
+              {t.driver.noPaymentsRecorded}
+            </p>
           ) : null}
         </CardContent>
       </Card>
@@ -1108,7 +1392,9 @@ function Row({
     <div className="flex items-center justify-between">
       <span className="text-gray-500">{label}</span>
       <span className={isDiscount ? "text-green-600" : ""}>
-        {isDiscount ? `- ${formatCurrency(value.replace("-", ""))}` : formatCurrency(value)}
+        {isDiscount
+          ? `- ${formatCurrency(value.replace("-", ""))}`
+          : formatCurrency(value)}
       </span>
     </div>
   );

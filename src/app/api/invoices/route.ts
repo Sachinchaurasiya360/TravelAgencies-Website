@@ -116,6 +116,77 @@ export async function POST(request: NextRequest) {
       return errorResponse("Company settings not configured. Please configure settings first.", 400);
     }
 
+    // Check if an invoice already exists for this booking — update it instead of creating a duplicate
+    const existingInvoice = await prisma.invoice.findFirst({
+      where: { bookingId: data.bookingId },
+      orderBy: { createdAt: "desc" },
+    });
+    if (existingInvoice) {
+      // Recalculate and update the existing invoice with latest pricing
+      const subtotalExisting = Number(booking.baseFare);
+      const isInterStateExisting = data.isInterState ?? false;
+      const includeGstExisting = booking.includeGst;
+      const gstExisting = includeGstExisting
+        ? calculateGst(subtotalExisting, isInterStateExisting)
+        : { subtotal: subtotalExisting, cgstRate: 0, sgstRate: 0, igstRate: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalTax: 0 };
+
+      const tollExisting = Number(booking.tollCharges || 0);
+      const parkingExisting = Number(booking.parkingCharges || 0);
+      const driverAllowanceExisting = Number(booking.driverAllowance || 0);
+      const extraChargesExisting = Number(booking.extraCharges || 0);
+      const discountExisting = Number(booking.discount || 0);
+      const grandTotalExisting = subtotalExisting + gstExisting.totalTax + tollExisting + parkingExisting + driverAllowanceExisting + extraChargesExisting - discountExisting;
+
+      const paidResultExisting = await prisma.payment.aggregate({
+        where: { bookingId: data.bookingId },
+        _sum: { amount: true },
+      });
+      const amountPaidExisting = Number(paidResultExisting._sum.amount || 0);
+      const balanceDueExisting = Math.max(0, grandTotalExisting - amountPaidExisting);
+
+      const serviceDescExisting = data.serviceDescription ||
+        `Transportation service - ${booking.pickupLocation} to ${booking.dropLocation}`;
+
+      const updated = await prisma.invoice.update({
+        where: { id: existingInvoice.id },
+        data: {
+          customerName: booking.customer.name,
+          customerAddress: [booking.customer.address, booking.customer.city, booking.customer.state, booking.customer.pincode]
+            .filter(Boolean).join(", ") || null,
+          customerPhone: booking.customer.phone,
+          customerEmail: booking.customer.email || null,
+          customerGstin: booking.customer.gstin || null,
+          customerState: booking.customer.state || null,
+          serviceDescription: serviceDescExisting,
+          subtotal: subtotalExisting,
+          cgstRate: gstExisting.cgstRate,
+          sgstRate: gstExisting.sgstRate,
+          igstRate: gstExisting.igstRate,
+          cgstAmount: gstExisting.cgstAmount,
+          sgstAmount: gstExisting.sgstAmount,
+          igstAmount: gstExisting.igstAmount,
+          totalTax: gstExisting.totalTax,
+          tollCharges: tollExisting,
+          parkingCharges: parkingExisting,
+          driverAllowance: driverAllowanceExisting,
+          extraCharges: extraChargesExisting,
+          extraChargesNote: booking.extraChargesNote || null,
+          discount: discountExisting,
+          grandTotal: Math.round(grandTotalExisting),
+          amountInWords: amountToWords(Math.round(grandTotalExisting)),
+          amountPaid: Math.round(amountPaidExisting),
+          balanceDue: Math.round(balanceDueExisting),
+          isInterState: isInterStateExisting,
+        },
+        include: {
+          booking: { select: { bookingId: true } },
+          customer: { select: { id: true, name: true, phone: true } },
+        },
+      });
+
+      return successResponse(updated, 200);
+    }
+
     // Calculate GST
     const subtotal = Number(booking.baseFare);
     const isInterState = data.isInterState ?? false;

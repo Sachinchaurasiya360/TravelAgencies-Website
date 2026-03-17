@@ -28,6 +28,10 @@ export const assignPricingSchema = z.object({
   includeGst: z.boolean().default(false),
   paymentDueDate: z.coerce.date().optional(),
   actualDistance: z.number().min(0).max(100000).optional(),
+  startKm: z.number().min(0).max(9999999).optional(),
+  endKm: z.number().min(0).max(9999999).optional(),
+  startDateTime: z.coerce.date().optional(),
+  endDateTime: z.coerce.date().optional(),
 });
 
 export const updateBookingStatusSchema = z.object({

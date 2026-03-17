@@ -30,14 +30,15 @@ export const authConfig = {
 
       const isOnLoginPage = pathname === "/admin/login";
       const isOnAdmin = pathname.startsWith("/admin");
-      const isOnDriver = pathname.startsWith("/driver");
 
-      // Login page: redirect logged-in users to their portal
+      // Public driver ride pages (shareable links) - no auth needed
+      if (pathname.startsWith("/driver/ride/")) {
+        return true;
+      }
+
+      // Login page: redirect logged-in users to admin
       if (isOnLoginPage) {
         if (isLoggedIn) {
-          if (role === "DRIVER") {
-            return Response.redirect(new URL("/driver", request.nextUrl));
-          }
           return Response.redirect(new URL("/admin", request.nextUrl));
         }
         return true;
@@ -46,18 +47,7 @@ export const authConfig = {
       // Admin routes: require ADMIN or SUPER_ADMIN
       if (isOnAdmin) {
         if (!isLoggedIn) return false;
-        if (role === "DRIVER") {
-          return Response.redirect(new URL("/driver", request.nextUrl));
-        }
-        return true;
-      }
-
-      // Driver routes: require DRIVER role
-      if (isOnDriver) {
-        if (!isLoggedIn) return false;
-        if (role !== "DRIVER") {
-          return Response.redirect(new URL("/admin", request.nextUrl));
-        }
+        if (role === "DRIVER") return false;
         return true;
       }
 

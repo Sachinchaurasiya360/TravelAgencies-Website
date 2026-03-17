@@ -34,12 +34,17 @@ import {
   Share2,
   UserCheck,
   AlertTriangle,
+  Car,
+  Link2,
+  Truck,
+  CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import type { BOOKING_STATUSES } from "@/lib/constants";
 import { useT } from "@/lib/i18n/language-context";
 import { interpolate } from "@/lib/i18n";
 import { getStatusLabel, getPaymentMethodLabel } from "@/lib/i18n/label-maps";
+import { downloadInvoicePdf } from "@/lib/helpers/download-pdf";
 
 type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
@@ -62,6 +67,10 @@ interface BookingDetail {
   discount: string | null;
   totalAmount: string | null;
   actualDistance: number | null;
+  startKm: number | null;
+  endKm: number | null;
+  startDateTime: string | null;
+  endDateTime: string | null;
   paymentStatus: string;
   paymentDueDate: string | null;
   adminRemarks: string | null;
@@ -69,9 +78,20 @@ interface BookingDetail {
   createdAt: string;
   customer: { id: string; name: string; phone: string; email: string | null };
   driver: { id: string; name: string; phone: string } | null;
+  driverAccessToken: string | null;
+  carSource: "OWN_CAR" | "VENDOR_CAR";
+  vendorId: string | null;
+  vendor: { id: string; name: string; phone: string } | null;
+  vendorCost: string | null;
   invoices: { id: string; invoiceNumber: string; grandTotal: string; status: string; shareToken: string | null; signedAt: string | null }[];
   notes: { id: string; content: string; createdAt: string; user: { name: string } }[];
   payments: { id: string; amount: string; method: string; paymentDate: string; isAdvance: boolean }[];
+}
+
+interface VendorOption {
+  id: string;
+  name: string;
+  phone: string;
 }
 
 interface DriverOption {
@@ -91,13 +111,17 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const [pricingOpen, setPricingOpen] = useState(false);
   const [pricing, setPricing] = useState({
     baseFare: "",
-    tollCharges: "0",
-    parkingCharges: "0",
-    driverAllowance: "0",
-    extraCharges: "0",
+    tollCharges: "",
+    parkingCharges: "",
+    driverAllowance: "",
+    extraCharges: "",
     extraChargesNote: "",
-    discount: "0",
+    discount: "",
     includeGst: false,
+    startKm: "",
+    endKm: "",
+    startDateTime: "",
+    endDateTime: "",
   });
   const [pricingLoading, setPricingLoading] = useState(false);
 
@@ -128,12 +152,21 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   // Generate Bill
   const [billLoading, setBillLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [downloadLoading, setDownloadLoading] = useState(false);
 
   // Driver assignment
   const [drivers, setDrivers] = useState<DriverOption[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState("");
   const [driverLoading, setDriverLoading] = useState(false);
   const [showDriverSelect, setShowDriverSelect] = useState(false);
+  const [driverLinkLoading, setDriverLinkLoading] = useState(false);
+
+  // Car source & Vendor
+  const [carSource, setCarSource] = useState<"OWN_CAR" | "VENDOR_CAR">("OWN_CAR");
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
+  const [selectedVendorId, setSelectedVendorId] = useState("");
+  const [vendorCost, setVendorCost] = useState("");
+  const [vendorLoading, setVendorLoading] = useState(false);
 
   async function fetchBooking() {
     try {
@@ -162,10 +195,22 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  async function fetchVendors() {
+    try {
+      const res = await fetch("/api/vendors?isActive=true&limit=100");
+      const result = await res.json();
+      if (result.success) {
+        setVendors(result.data.vendors || []);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      await Promise.all([fetchBooking(), fetchDrivers()]);
+      await Promise.all([fetchBooking(), fetchDrivers(), fetchVendors()]);
       setLoading(false);
     }
     loadData();
@@ -215,6 +260,10 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           extraChargesNote: pricing.extraChargesNote || undefined,
           discount: parseFloat(pricing.discount) || 0,
           includeGst: pricing.includeGst,
+          ...(pricing.startKm && { startKm: parseFloat(pricing.startKm) }),
+          ...(pricing.endKm && { endKm: parseFloat(pricing.endKm) }),
+          ...(pricing.startDateTime && { startDateTime: pricing.startDateTime }),
+          ...(pricing.endDateTime && { endDateTime: pricing.endDateTime }),
         }),
       });
       const result = await res.json();
@@ -299,7 +348,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       const result = await res.json();
       if (result.success) {
         const invoiceId = result.data.id;
-        window.open(`/api/invoices/${invoiceId}/pdf`, "_blank");
+        const invoiceNumber = result.data.invoiceNumber;
+        await downloadInvoicePdf(invoiceId, invoiceNumber);
         toast.success(t.bookingDetail.billGenerated);
         fetchBooking();
       } else {
@@ -309,6 +359,17 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       toast.error(t.bookingDetail.billFailed);
     } finally {
       setBillLoading(false);
+    }
+  }
+
+  async function handleDownloadBill(invoiceId: string, invoiceNumber?: string) {
+    setDownloadLoading(true);
+    try {
+      await downloadInvoicePdf(invoiceId, invoiceNumber);
+    } catch {
+      toast.error(t.bookingDetail.billFailed);
+    } finally {
+      setDownloadLoading(false);
     }
   }
 
@@ -358,6 +419,85 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       setDriverLoading(false);
     }
   }
+
+  async function handleCopyDriverLink() {
+    setDriverLinkLoading(true);
+    try {
+      const res = await fetch(`/api/bookings/${id}/driver-link`, { method: "POST" });
+      const result = await res.json();
+      if (result.success) {
+        await navigator.clipboard.writeText(result.data.driverUrl);
+        toast.success(t.bookingDetail.driverLinkCopied);
+      } else {
+        toast.error(result.error || t.bookingDetail.driverLinkFailed);
+      }
+    } catch {
+      toast.error(t.bookingDetail.driverLinkFailed);
+    } finally {
+      setDriverLinkLoading(false);
+    }
+  }
+
+  async function handleCarSourceChange(source: "OWN_CAR" | "VENDOR_CAR") {
+    setCarSource(source);
+    if (source === "OWN_CAR") {
+      setVendorLoading(true);
+      try {
+        const res = await fetch(`/api/bookings/${id}/car-source`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ carSource: "OWN_CAR" }),
+        });
+        const result = await res.json();
+        if (result.success) {
+          toast.success(t.bookingDetail.carSourceUpdated);
+          await fetchBooking();
+        } else {
+          toast.error(result.error);
+        }
+      } catch {
+        toast.error(t.bookingDetail.vendorAssignFailed);
+      } finally {
+        setVendorLoading(false);
+      }
+    }
+  }
+
+  async function handleAssignVendor() {
+    if (!selectedVendorId) return;
+    setVendorLoading(true);
+    try {
+      const res = await fetch(`/api/bookings/${id}/car-source`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          carSource: "VENDOR_CAR",
+          vendorId: selectedVendorId,
+          vendorCost: vendorCost ? parseFloat(vendorCost) : null,
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(t.bookingDetail.vendorAssigned);
+        await fetchBooking();
+      } else {
+        toast.error(result.error || t.bookingDetail.vendorAssignFailed);
+      }
+    } catch {
+      toast.error(t.bookingDetail.vendorAssignFailed);
+    } finally {
+      setVendorLoading(false);
+    }
+  }
+
+  // Sync car source state when booking loads
+  useEffect(() => {
+    if (booking) {
+      setCarSource(booking.carSource || "OWN_CAR");
+      setSelectedVendorId(booking.vendorId || "");
+      setVendorCost(booking.vendorCost || "");
+    }
+  }, [booking]);
 
   if (loading) return <LoadingSpinner />;
   if (!booking) return null;
@@ -420,35 +560,78 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 {t.bookingDetail.assignPricing}
               </Button>
             )}
-            {booking.baseFare && !booking.invoices?.some((inv) => inv.signedAt) && (
-              <Button
-                variant="outline"
-                onClick={handleGenerateBill}
-                disabled={billLoading}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {billLoading ? t.common.generating : t.bookingDetail.generateBill}
-              </Button>
-            )}
-            {booking.baseFare && booking.invoices?.some((inv) => inv.signedAt) && (
-              <Button
-                variant="outline"
-                onClick={() => window.open(`/api/invoices/${booking.invoices.find((inv) => inv.signedAt)!.id}/pdf`, "_blank")}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {t.bookingDetail.downloadBill}
-              </Button>
-            )}
-            {booking.invoices?.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => handleShareBill(booking.invoices[0].id)}
-                disabled={shareLoading}
-              >
-                <Share2 className="mr-2 h-4 w-4" />
-                {shareLoading ? t.common.processing : t.bookingDetail.shareBill}
-              </Button>
-            )}
+            {booking.baseFare && (() => {
+              const latestInvoice = booking.invoices?.[0];
+              const isSigned = latestInvoice?.signedAt;
+
+              if (isSigned) {
+                // Bill is signed — show "Bill Generated" badge + Download + Share
+                return (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800"
+                      disabled
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      {t.bookingDetail.billGenerated}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleDownloadBill(latestInvoice.id, latestInvoice.invoiceNumber)}
+                      disabled={downloadLoading}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      {downloadLoading ? t.common.processing : t.bookingDetail.downloadBill}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleShareBill(latestInvoice.id)}
+                      disabled={shareLoading}
+                    >
+                      <Share2 className="mr-2 h-4 w-4" />
+                      {shareLoading ? t.common.processing : t.bookingDetail.shareBill}
+                    </Button>
+                  </>
+                );
+              }
+
+              if (latestInvoice) {
+                // Invoice exists but not signed — show Generate (updates), Download, Share
+                return (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={handleGenerateBill}
+                      disabled={billLoading}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      {billLoading ? t.common.generating : t.bookingDetail.generateBill}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleShareBill(latestInvoice.id)}
+                      disabled={shareLoading}
+                    >
+                      <Share2 className="mr-2 h-4 w-4" />
+                      {shareLoading ? t.common.processing : t.bookingDetail.shareBill}
+                    </Button>
+                  </>
+                );
+              }
+
+              // No invoice yet — show Generate Bill
+              return (
+                <Button
+                  variant="outline"
+                  onClick={handleGenerateBill}
+                  disabled={billLoading}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  {billLoading ? t.common.generating : t.bookingDetail.generateBill}
+                </Button>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
@@ -493,6 +676,35 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 </div>
               </div>
             </div>
+
+            {(booking.startKm != null || booking.endKm != null || booking.startDateTime || booking.endDateTime) && (
+              <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4">
+                {booking.startKm != null && (
+                  <div>
+                    <p className="text-muted-foreground">{t.bookingDetail.startKm}</p>
+                    <p className="font-medium">{booking.startKm} km</p>
+                  </div>
+                )}
+                {booking.endKm != null && (
+                  <div>
+                    <p className="text-muted-foreground">{t.bookingDetail.endKm}</p>
+                    <p className="font-medium">{booking.endKm} km</p>
+                  </div>
+                )}
+                {booking.startDateTime && (
+                  <div>
+                    <p className="text-muted-foreground">{t.bookingDetail.startDateTime}</p>
+                    <p className="font-medium">{formatDateTime(booking.startDateTime)}</p>
+                  </div>
+                )}
+                {booking.endDateTime && (
+                  <div>
+                    <p className="text-muted-foreground">{t.bookingDetail.endDateTime}</p>
+                    <p className="font-medium">{formatDateTime(booking.endDateTime)}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -524,85 +736,178 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           </CardContent>
         </Card>
 
-        {/* Driver */}
+        {/* Car Source & Assignment */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <UserCheck className="h-5 w-5" />
-              {t.bookingDetail.driverSection}
+              <Car className="h-5 w-5" />
+              {t.bookingDetail.carSource}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            {booking.driver ? (
-              <div className="space-y-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">{t.bookingDetail.name}</p>
-                  <p className="font-medium">{booking.driver.name}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">{t.bookingDetail.phone}</p>
-                  <p className="font-medium">{booking.driver.phone}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => {
-                    setShowDriverSelect(true);
-                    setSelectedDriverId("");
-                  }}
-                >
-                  {t.bookingDetail.changeDriver}
-                </Button>
+          <CardContent className="space-y-4">
+            {/* Radio toggle */}
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="carSource"
+                  value="OWN_CAR"
+                  checked={carSource === "OWN_CAR"}
+                  onChange={() => handleCarSourceChange("OWN_CAR")}
+                  className="h-4 w-4 accent-blue-600"
+                />
+                <span className="text-sm font-medium">{t.bookingDetail.ownCar}</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="carSource"
+                  value="VENDOR_CAR"
+                  checked={carSource === "VENDOR_CAR"}
+                  onChange={() => handleCarSourceChange("VENDOR_CAR")}
+                  className="h-4 w-4 accent-blue-600"
+                />
+                <span className="text-sm font-medium">{t.bookingDetail.vendorCar}</span>
+              </label>
+            </div>
+
+            {/* OWN_CAR: Driver assignment */}
+            {carSource === "OWN_CAR" && (
+              <div>
+                {booking.driver ? (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium">{booking.driver.name}</span>
+                      <span className="text-muted-foreground">({booking.driver.phone})</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowDriverSelect(true);
+                          setSelectedDriverId("");
+                        }}
+                      >
+                        {t.bookingDetail.changeDriver}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyDriverLink}
+                        disabled={driverLinkLoading}
+                      >
+                        <Link2 className="mr-1 h-3 w-3" />
+                        {driverLinkLoading ? t.common.processing : t.bookingDetail.copyDriverLink}
+                      </Button>
+                    </div>
+                  </div>
+                ) : !showDriverSelect ? (
+                  <div className="text-muted-foreground py-4 text-center text-sm">
+                    {t.bookingDetail.noDriverAssigned}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setShowDriverSelect(true)}
+                    >
+                      {t.bookingDetail.assignDriver}
+                    </Button>
+                  </div>
+                ) : null}
+                {showDriverSelect && (
+                  <div className="space-y-3">
+                    <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t.bookingDetail.selectDriver} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {drivers.length === 0 ? (
+                          <SelectItem value="_none" disabled>
+                            {t.bookingDetail.noDriversAvailable}
+                          </SelectItem>
+                        ) : (
+                          drivers.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name} ({d.phone})
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleAssignDriver}
+                        disabled={!selectedDriverId || driverLoading}
+                      >
+                        {driverLoading ? t.bookingDetail.assigning : t.common.assign}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowDriverSelect(false)}
+                      >
+                        {t.common.cancel}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : !showDriverSelect ? (
-              <div className="text-muted-foreground py-4 text-center text-sm">
-                {t.bookingDetail.noDriverAssigned}
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => setShowDriverSelect(true)}
-                >
-                  {t.bookingDetail.assignDriver}
-                </Button>
-              </div>
-            ) : null}
-            {showDriverSelect && (
+            )}
+
+            {/* VENDOR_CAR: Vendor selection */}
+            {carSource === "VENDOR_CAR" && (
               <div className="space-y-3">
-                <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+                {booking.vendor && !vendorLoading && (
+                  <div className="flex items-center gap-2 text-sm rounded-lg bg-gray-50 p-3">
+                    <Truck className="h-4 w-4 text-orange-500" />
+                    <span className="font-medium">{booking.vendor.name}</span>
+                    <span className="text-muted-foreground">({booking.vendor.phone})</span>
+                    {booking.vendorCost && (
+                      <span className="ml-auto text-sm font-medium text-blue-600">
+                        {formatCurrency(booking.vendorCost)}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t.bookingDetail.selectDriver} />
+                    <SelectValue placeholder={t.bookingDetail.selectVendor} />
                   </SelectTrigger>
                   <SelectContent>
-                    {drivers.length === 0 ? (
+                    {vendors.length === 0 ? (
                       <SelectItem value="_none" disabled>
-                        {t.bookingDetail.noDriversAvailable}
+                        No vendors available
                       </SelectItem>
                     ) : (
-                      drivers.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.name} ({d.phone})
+                      vendors.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.name} ({v.phone})
                         </SelectItem>
                       ))
                     )}
                   </SelectContent>
                 </Select>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleAssignDriver}
-                    disabled={!selectedDriverId || driverLoading}
-                  >
-                    {driverLoading ? t.bookingDetail.assigning : t.common.assign}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowDriverSelect(false)}
-                  >
-                    {t.common.cancel}
-                  </Button>
+                <div>
+                  <Label className="text-sm">{t.bookingDetail.vendorCostLabel}</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="0"
+                    value={vendorCost}
+                    onChange={(e) => setVendorCost(e.target.value)}
+                    className="mt-1"
+                  />
                 </div>
+                <Button
+                  size="sm"
+                  onClick={handleAssignVendor}
+                  disabled={!selectedVendorId || vendorLoading}
+                >
+                  {vendorLoading ? t.common.saving : t.bookingDetail.saveVendorAssignment}
+                </Button>
               </div>
             )}
           </CardContent>
@@ -668,22 +973,25 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                     <span>{booking.actualDistance} km</span>
                   </div>
                 )}
-                {/* Allow edit if no invoice is signed */}
-                {!booking.invoices?.some((inv) => inv.signedAt) && (
-                  <Button
+                {/* Admin can always edit pricing */}
+                <Button
                     variant="outline"
                     size="sm"
                     className="mt-3 w-full"
                     onClick={() => {
                       setPricing({
                         baseFare: booking.baseFare || "",
-                        tollCharges: booking.tollCharges || "0",
-                        parkingCharges: booking.parkingCharges || "0",
-                        driverAllowance: booking.driverAllowance || "0",
-                        extraCharges: booking.extraCharges || "0",
+                        tollCharges: parseFloat(booking.tollCharges || "0") > 0 ? booking.tollCharges! : "",
+                        parkingCharges: parseFloat(booking.parkingCharges || "0") > 0 ? booking.parkingCharges! : "",
+                        driverAllowance: parseFloat(booking.driverAllowance || "0") > 0 ? booking.driverAllowance! : "",
+                        extraCharges: parseFloat(booking.extraCharges || "0") > 0 ? booking.extraCharges! : "",
                         extraChargesNote: booking.extraChargesNote || "",
-                        discount: booking.discount || "0",
+                        discount: parseFloat(booking.discount || "0") > 0 ? booking.discount! : "",
                         includeGst: booking.includeGst,
+                        startKm: booking.startKm?.toString() || "",
+                        endKm: booking.endKm?.toString() || "",
+                        startDateTime: booking.startDateTime ? new Date(booking.startDateTime).toISOString().slice(0, 16) : "",
+                        endDateTime: booking.endDateTime ? new Date(booking.endDateTime).toISOString().slice(0, 16) : "",
                       });
                       setPricingOpen(true);
                     }}
@@ -691,10 +999,59 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                     <IndianRupee className="mr-2 h-4 w-4" />
                     {t.bookingDetail.editPricing}
                   </Button>
-                )}
               </div>
             ) : pricingOpen ? (
               <form onSubmit={handlePricingSubmit} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="startKm">{t.bookingDetail.startKm}</Label>
+                    <Input
+                      id="startKm"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={pricing.startKm}
+                      onChange={(e) => setPricing({ ...pricing, startKm: e.target.value })}
+                      className="mt-1"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endKm">{t.bookingDetail.endKm}</Label>
+                    <Input
+                      id="endKm"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={pricing.endKm}
+                      onChange={(e) => setPricing({ ...pricing, endKm: e.target.value })}
+                      className="mt-1"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="startDateTime">{t.bookingDetail.startDateTime}</Label>
+                    <Input
+                      id="startDateTime"
+                      type="datetime-local"
+                      value={pricing.startDateTime}
+                      onChange={(e) => setPricing({ ...pricing, startDateTime: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endDateTime">{t.bookingDetail.endDateTime}</Label>
+                    <Input
+                      id="endDateTime"
+                      type="datetime-local"
+                      value={pricing.endDateTime}
+                      onChange={(e) => setPricing({ ...pricing, endDateTime: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
                 <div>
                   <Label htmlFor="baseFare">{t.bookingDetail.baseFareRequired}</Label>
                   <Input
@@ -706,6 +1063,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                     onChange={(e) => setPricing({ ...pricing, baseFare: e.target.value })}
                     required
                     className="mt-1"
+                    placeholder="Enter base fare"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -719,6 +1077,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                       value={pricing.tollCharges}
                       onChange={(e) => setPricing({ ...pricing, tollCharges: e.target.value })}
                       className="mt-1"
+                      placeholder="0"
                     />
                   </div>
                   <div>
@@ -731,6 +1090,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                       value={pricing.parkingCharges}
                       onChange={(e) => setPricing({ ...pricing, parkingCharges: e.target.value })}
                       className="mt-1"
+                      placeholder="0"
                     />
                   </div>
                 </div>
@@ -745,6 +1105,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                       value={pricing.driverAllowance}
                       onChange={(e) => setPricing({ ...pricing, driverAllowance: e.target.value })}
                       className="mt-1"
+                      placeholder="0"
                     />
                   </div>
                   <div>
@@ -757,6 +1118,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                       value={pricing.discount}
                       onChange={(e) => setPricing({ ...pricing, discount: e.target.value })}
                       className="mt-1"
+                      placeholder="0"
                     />
                   </div>
                 </div>
@@ -782,6 +1144,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                       value={pricing.extraCharges}
                       onChange={(e) => setPricing({ ...pricing, extraCharges: e.target.value })}
                       className="mt-1"
+                      placeholder="0"
                     />
                   </div>
                 </div>
@@ -977,49 +1340,51 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         </Card>
       </div>
 
-      {/* Invoices */}
-      {booking.invoices?.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{t.bookingDetail.invoices}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {booking.invoices.map((inv) => (
-                <div key={inv.id} className="flex items-center justify-between rounded border p-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{inv.invoiceNumber}</span>
-                    {inv.signedAt && (
-                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-                        {t.common.signed}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(`/api/invoices/${inv.id}/pdf`, "_blank")}
-                    >
-                      <FileText className="mr-1 h-3 w-3" />
-                      {t.common.view}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleShareBill(inv.id)}
-                      disabled={shareLoading}
-                    >
-                      <Share2 className="mr-1 h-3 w-3" />
-                      {t.bookingDetail.shareBill}
-                    </Button>
-                  </div>
+      {/* Invoice */}
+      {booking.invoices?.length > 0 && (() => {
+        const inv = booking.invoices[0];
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">{t.bookingDetail.invoices}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between rounded border p-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{inv.invoiceNumber}</span>
+                  <span className="text-muted-foreground">{formatCurrency(inv.grandTotal)}</span>
+                  {inv.signedAt && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                      <CheckCircle className="h-3 w-3" />
+                      {t.common.signed}
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadBill(inv.id, inv.invoiceNumber)}
+                    disabled={downloadLoading}
+                  >
+                    <FileText className="mr-1 h-3 w-3" />
+                    {downloadLoading ? t.common.processing : t.bookingDetail.downloadBill}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleShareBill(inv.id)}
+                    disabled={shareLoading}
+                  >
+                    <Share2 className="mr-1 h-3 w-3" />
+                    {t.bookingDetail.shareBill}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Notes */}
       <Card>

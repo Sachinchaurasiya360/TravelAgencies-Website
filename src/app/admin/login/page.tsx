@@ -42,15 +42,7 @@ export default function AdminLoginPage() {
 
       toast.success(t.login.success);
 
-      // Fetch session to determine redirect based on role
-      const sessionRes = await fetch("/api/auth/session");
-      const session = await sessionRes.json();
-
-      if (session?.user?.role === "DRIVER") {
-        router.push("/driver");
-      } else {
-        router.push("/admin");
-      }
+      router.push("/admin");
       router.refresh();
     } catch {
       toast.error(t.login.genericError);

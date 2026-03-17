@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -99,9 +98,8 @@ export function AdminBookingForm({ onSuccess, onCancel }: AdminBookingFormProps)
   }
 
   return (
-    <Card className="border-gray-200">
-      <CardContent className="p-5">
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div>
+      <form onSubmit={handleSubmit} className="space-y-4">
           {/* Row 1: Customer */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
@@ -305,7 +303,6 @@ export function AdminBookingForm({ onSuccess, onCancel }: AdminBookingFormProps)
             </div>
           </div>
         </form>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

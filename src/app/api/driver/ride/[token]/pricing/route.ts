@@ -1,36 +1,28 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { successResponse, errorResponse, requireAuth } from "@/lib/api-helpers";
+import { successResponse, errorResponse } from "@/lib/api-helpers";
 import { assignPricingSchema } from "@/validators/booking.validator";
 import { calculateBookingTotal } from "@/lib/helpers/gst";
 import { ActivityAction } from "@prisma/client";
 import { logActivity } from "@/services/activity-log.service";
 
-// PATCH /api/bookings/[id]/assign-pricing - Set pricing on booking (admin + driver)
+// PATCH /api/driver/ride/[token]/pricing - Public: set pricing via driver token
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ token: string }> }
 ) {
-  const session = await requireAuth();
-  if (!session) return errorResponse("Unauthorized", 401);
-
-  const { id } = await params;
+  const { token } = await params;
 
   try {
+    const booking = await prisma.booking.findUnique({
+      where: { driverAccessToken: token },
+    });
+    if (!booking) return errorResponse("Ride not found", 404);
+
     const body = await request.json();
     const parsed = assignPricingSchema.safeParse(body);
-
     if (!parsed.success) {
       return errorResponse(parsed.error.issues[0].message, 400);
-    }
-
-    const booking = await prisma.booking.findUnique({ where: { id } });
-    if (!booking) return errorResponse("Booking not found", 404);
-
-    // Driver can only update pricing on their own bookings
-    const role = (session.user as { role: string }).role;
-    if (role === "DRIVER" && booking.driverId !== session.user.id) {
-      return errorResponse("Access denied", 403);
     }
 
     const totals = calculateBookingTotal({
@@ -44,7 +36,7 @@ export async function PATCH(
     });
 
     const updated = await prisma.booking.update({
-      where: { id },
+      where: { id: booking.id },
       data: {
         baseFare: totals.baseFare,
         taxAmount: totals.taxAmount,
@@ -59,7 +51,9 @@ export async function PATCH(
         paymentDueDate: parsed.data.paymentDueDate
           ? new Date(parsed.data.paymentDueDate)
           : null,
-        ...(parsed.data.actualDistance !== undefined && { actualDistance: parsed.data.actualDistance }),
+        ...(parsed.data.actualDistance !== undefined && {
+          actualDistance: parsed.data.actualDistance,
+        }),
         ...(parsed.data.startKm !== undefined && { startKm: parsed.data.startKm }),
         ...(parsed.data.endKm !== undefined && { endKm: parsed.data.endKm }),
         ...(parsed.data.startDateTime !== undefined && { startDateTime: parsed.data.startDateTime }),
@@ -69,16 +63,20 @@ export async function PATCH(
 
     logActivity({
       action: ActivityAction.BOOKING_PRICING_SET,
-      description: `Pricing set for booking ${booking.bookingId}: total ${totals.totalAmount}`,
-      userId: session.user.id,
+      description: `Pricing set via driver link for booking ${booking.bookingId}: total ${totals.totalAmount}`,
+      userId: booking.driverId ?? undefined,
       entityType: "Booking",
       entityId: booking.id,
-      metadata: { bookingId: booking.bookingId, totalAmount: totals.totalAmount },
+      metadata: {
+        bookingId: booking.bookingId,
+        totalAmount: totals.totalAmount,
+        viaDriverLink: true,
+      },
     }).catch(console.error);
 
     return successResponse(updated);
   } catch (error) {
-    console.error("Assign pricing error:", error);
-    return errorResponse("Failed to assign pricing", 500);
+    console.error("Driver ride pricing error:", error);
+    return errorResponse("Failed to update pricing", 500);
   }
 }
