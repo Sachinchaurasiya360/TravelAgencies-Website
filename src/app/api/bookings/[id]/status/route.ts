@@ -66,7 +66,7 @@ export async function PATCH(
       data: updateData,
       include: {
         customer: { select: { name: true, phone: true, email: true } },
-        driver: { select: { name: true, phone: true } },
+        driver: { select: { name: true, phone: true, vehicleNumber: true, vehicleName: true } },
       },
     });
 
@@ -105,6 +105,10 @@ export async function PATCH(
         tollCharges: updated.tollCharges,
         extraCharges: updated.extraCharges,
         extraChargesNote: updated.extraChargesNote,
+        pickupLocation: updated.pickupLocation,
+        dropLocation: updated.dropLocation,
+        travelDate: updated.travelDate,
+        pickupTime: updated.pickupTime,
         driver: updated.driver,
       },
       newStatus

@@ -30,8 +30,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user || !user.isActive || user.role === "DRIVER") {
-      // Don't reveal whether account exists
-      return successResponse({ sent: true });
+      return errorResponse("No account found with this email", 400);
     }
 
     // Delete any existing OTPs for this email

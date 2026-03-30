@@ -18,7 +18,17 @@ export async function POST(
     const invoice = await prisma.invoice.findUnique({
       where: { id },
       include: {
-        booking: { select: { bookingId: true, driverId: true } },
+        booking: {
+          select: {
+            bookingId: true,
+            driverId: true,
+            pickupLocation: true,
+            dropLocation: true,
+            travelDate: true,
+            pickupTime: true,
+            driver: { select: { name: true, vehicleNumber: true, vehicleName: true } },
+          },
+        },
         customer: { select: { phone: true, name: true } },
       },
     });
@@ -50,20 +60,41 @@ export async function POST(
       }
     }
 
+    const settings = await prisma.settings.findUnique({
+      where: { id: "app_settings" },
+      select: { companyName: true },
+    });
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const shareUrl = `${appUrl}/invoice/${shareToken}`;
+    const companyName = settings?.companyName || "Sarthak Unity Tours And Travels";
 
-    const message = `Hello ${invoice.customer.name}! 📄
+    const travelDate = new Date(invoice.booking.travelDate).toLocaleDateString("en-IN", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+    });
+    const pickupTime = invoice.booking.pickupTime || "-";
+    const from = invoice.booking.pickupLocation;
+    const to = invoice.booking.dropLocation;
+    const carNo = invoice.booking.driver?.vehicleNumber || invoice.booking.driver?.vehicleName || "-";
+    const driverInfo = invoice.booking.driver?.name || "-";
 
-Here is your invoice for Booking #${invoice.booking.bookingId}.
+    const message = `Dear ${invoice.customer.name},
 
-*Invoice:* ${invoice.invoiceNumber}
-*Amount:* ₹${Number(invoice.grandTotal).toLocaleString("en-IN")}
+Journey details
+From: ${from} To ${to} On ${travelDate}
+Invoice No: ${invoice.invoiceNumber}
+Boarding: ${from} At ${pickupTime},
+Address: ${from}
 
-Please review and sign the invoice here:
-${shareUrl}
+Car Details:-
+Car No: ${carNo}
+Driver details: ${driverInfo}
 
-- Sarthak Tour and Travels`;
+${companyName}
+Your Travel Partner
+
+Please review and sign your invoice here:
+${shareUrl}`;
 
     const whatsappUrl = generateWhatsAppUrl(invoice.customer.phone, message);
 

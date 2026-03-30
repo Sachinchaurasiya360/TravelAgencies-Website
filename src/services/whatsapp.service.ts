@@ -23,22 +23,35 @@ export function generateWhatsAppUrl(phone: string, message: string): string {
 export function bookingConfirmationWhatsApp(
   bookingId: string,
   customerName: string,
-  details: { pickupLocation: string; dropLocation: string; travelDate: string }
+  details: {
+    pickupLocation: string;
+    dropLocation: string;
+    travelDate: string;
+    pickupTime?: string | null;
+    companyName?: string;
+  }
 ): string {
-  return `Hello ${customerName}!
+  const company = details.companyName || "Sarthak Unity Tours And Travels";
+  const pickupTime = details.pickupTime || "-";
 
-Your booking request has been received.
+  return `Dear ${customerName},
+your journey with *${company}*
 
-*Booking ID:* ${bookingId}
-*Pickup:* ${details.pickupLocation}
-*Drop:* ${details.dropLocation}
-*Date:* ${details.travelDate}
+Journey Details for travel on *${details.travelDate}*
+*Invoice*: -
+*Trip*: ${details.pickupLocation} *To* ${details.dropLocation}
 
-Our team will review and confirm your booking shortly.
+Boarding Details
+*Pickup point Address*: ${details.pickupLocation}
+*Departure time*: ${pickupTime}
+*Pickup URL*: -
 
-Track your booking: ${process.env.NEXT_PUBLIC_APP_URL}/track
+Car Details
+*Car Number*: -
+*Driver Details*: -
 
-- Sarthak Tour and Travels`;
+*${company}*
+Your Travel Partner`;
 }
 
 export function statusUpdateWhatsApp(
@@ -50,30 +63,73 @@ export function statusUpdateWhatsApp(
     tollCharges: number;
     extraChargesNote?: string;
     extraCharges: number;
-  },
+  } | null,
   driver?: {
     name: string;
     phone: string | null;
-  }
+    vehicleNumber?: string | null;
+    vehicleName?: string | null;
+  } | null,
+  bookingDetails?: {
+    customerName?: string;
+    companyName?: string;
+    pickupLocation?: string;
+    dropLocation?: string;
+    travelDate?: string;
+    pickupTime?: string | null;
+  } | null
 ): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const company = bookingDetails?.companyName || "Sarthak Unity Tours And Travels";
+  const rawStatus = status.toUpperCase();
 
-  if (status === "Completed") {
-    let text = `Dear Customer,
+  // ── CONFIRMED ──────────────────────────────────────────────
+  if (rawStatus === "CONFIRMED" || rawStatus === "BOOKING CONFIRMED") {
+    const customerName = bookingDetails?.customerName || "Customer";
+    const travelDate = bookingDetails?.travelDate || "-";
+    const from = bookingDetails?.pickupLocation || "-";
+    const to = bookingDetails?.dropLocation || "-";
+    const pickupTime = bookingDetails?.pickupTime || "-";
+    const carNumber = driver?.vehicleNumber || driver?.vehicleName || "-";
+    const driverInfo = driver
+      ? `${driver.name}${driver.phone ? ` (${driver.phone})` : ""}`
+      : "-";
 
-Thank you for travelling with *Sarthak Tour and Travels*!
+    return `Dear ${customerName},
+your journey with *${company}*
 
-Your ride (Booking #${bookingId}) has been completed successfully. We hope you had a pleasant journey.
+Journey Details for travel on *${travelDate}*
+*Invoice*: -
+*Trip*: ${from} *To* ${to}
 
-Your invoice will be shared with you shortly.`;
-    text += `\n\nFor any queries, feel free to reach out to us.
+Boarding Details
+*Pickup point Address*: ${from}
+*Departure time*: ${pickupTime}
+*Pickup URL*: -
 
-Warm regards,
-*Sarthak Tour and Travels*`;
-    return text;
+Car Details
+*Car Number*: ${carNumber}
+*Driver Details*: ${driverInfo}
+
+*${company}*
+Your Travel Partner`;
   }
 
-  // Confirmed / Cancelled / Other statuses
+  // ── CANCELLED ──────────────────────────────────────────────
+  if (rawStatus === "CANCELLED" || rawStatus === "BOOKING CANCELLED") {
+    return `Dear Customer,
+
+Your booking *#${bookingId}* has been cancelled.
+
+${message}
+
+For any queries, contact us.
+
+Regards,
+*${company}*`;
+  }
+
+  // ── Other statuses ─────────────────────────────────────────
   let text = `Dear Customer,
 
 *Booking #${bookingId}* — *${status}*
@@ -82,13 +138,11 @@ ${message}`;
 
   if (driver) {
     text += `\n\n*Driver Details:*\nName: ${driver.name}`;
-    if (driver.phone) {
-      text += `\nContact: ${driver.phone}`;
-    }
+    if (driver.phone) text += `\nContact: ${driver.phone}`;
   }
 
   text += `\n\nTrack your booking:\n${appUrl}/track`;
-  text += `\n\nWarm regards,\n*Sarthak Tour and Travels*`;
+  text += `\n\nWarm regards,\n*${company}*`;
   return text;
 }
 
@@ -105,5 +159,5 @@ ${dueDate ? `*Due Date:* ${dueDate}` : ""}
 
 Please make the payment at your earliest convenience.
 
-- Sarthak Tour and Travels`;
+- Sarthak Unity Tours And Travels`;
 }

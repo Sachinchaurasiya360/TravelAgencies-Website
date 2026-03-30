@@ -14,7 +14,15 @@ export async function POST(
   try {
     const booking = await prisma.booking.findUnique({
       where: { driverAccessToken: token },
-      select: { id: true, bookingId: true },
+      select: {
+        id: true,
+        bookingId: true,
+        pickupLocation: true,
+        dropLocation: true,
+        travelDate: true,
+        pickupTime: true,
+        driver: { select: { name: true, vehicleNumber: true, vehicleName: true } },
+      },
     });
     if (!booking) return errorResponse("Ride not found", 404);
 
@@ -50,20 +58,41 @@ export async function POST(
       }
     }
 
+    const settings = await prisma.settings.findUnique({
+      where: { id: "app_settings" },
+      select: { companyName: true },
+    });
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const shareUrl = `${appUrl}/invoice/${shareToken}`;
+    const companyName = settings?.companyName || "Sarthak Unity Tours And Travels";
 
-    const message = `Hello ${invoice.customer.name}! 📄
+    const travelDate = new Date(booking.travelDate).toLocaleDateString("en-IN", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+    });
+    const pickupTime = booking.pickupTime || "-";
+    const from = booking.pickupLocation;
+    const to = booking.dropLocation;
+    const carNo = booking.driver?.vehicleNumber || booking.driver?.vehicleName || "-";
+    const driverInfo = booking.driver?.name || "-";
 
-Here is your invoice for Booking #${booking.bookingId}.
+    const message = `Dear ${invoice.customer.name},
 
-*Invoice:* ${invoice.invoiceNumber}
-*Amount:* ₹${Number(invoice.grandTotal).toLocaleString("en-IN")}
+Journey details
+From: ${from} To ${to} On ${travelDate}
+Invoice No: ${invoice.invoiceNumber}
+Boarding: ${from} At ${pickupTime},
+Address: ${from}
 
-Please review and sign the invoice here:
-${shareUrl}
+Car Details:-
+Car No: ${carNo}
+Driver details: ${driverInfo}
 
-- Sarthak Tour and Travels`;
+${companyName}
+Your Travel Partner
+
+Please review and sign your invoice here:
+${shareUrl}`;
 
     const whatsappUrl = generateWhatsAppUrl(invoice.customer.phone, message);
 

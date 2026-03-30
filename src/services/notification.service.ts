@@ -38,6 +38,7 @@ export async function sendBookingConfirmation(booking: {
   pickupLocation: string;
   dropLocation: string;
   travelDate: Date;
+  pickupTime?: string | null;
   customer: { name: string; phone: string; email: string | null };
 }): Promise<NotificationResult[]> {
   const results: NotificationResult[] = [];
@@ -78,6 +79,8 @@ export async function sendBookingConfirmation(booking: {
       pickupLocation: booking.pickupLocation,
       dropLocation: booking.dropLocation,
       travelDate: travelDateStr,
+      pickupTime: booking.pickupTime,
+      companyName: settings?.companyName,
     });
     const whatsappUrl = generateWhatsAppUrl(booking.customer.phone, waBody);
     results.push({ channel: "WHATSAPP", success: true, whatsappUrl });
@@ -102,7 +105,11 @@ export async function sendStatusNotification(booking: {
   tollCharges?: unknown;
   extraCharges?: unknown;
   extraChargesNote?: string | null;
-  driver?: { name: string; phone: string | null } | null;
+  pickupLocation?: string;
+  dropLocation?: string;
+  travelDate?: Date;
+  pickupTime?: string | null;
+  driver?: { name: string; phone: string | null; vehicleNumber?: string | null; vehicleName?: string | null } | null;
 }, newStatus: string): Promise<NotificationResult[]> {
   const results: NotificationResult[] = [];
   const settings = await prisma.settings.findUnique({ where: { id: "app_settings" } });
@@ -149,8 +156,18 @@ export async function sendStatusNotification(booking: {
     const driver = booking.driver ? {
       name: booking.driver.name,
       phone: booking.driver.phone,
+      vehicleNumber: booking.driver.vehicleNumber,
+      vehicleName: booking.driver.vehicleName,
     } : undefined;
-    const waBody = statusUpdateWhatsApp(booking.bookingId, statusLabel, message, pricing, driver);
+    const bookingDetails = {
+      customerName: booking.customer.name,
+      companyName: settings?.companyName,
+      pickupLocation: booking.pickupLocation,
+      dropLocation: booking.dropLocation,
+      travelDate: booking.travelDate?.toLocaleDateString("en-IN"),
+      pickupTime: booking.pickupTime,
+    };
+    const waBody = statusUpdateWhatsApp(booking.bookingId, statusLabel, message, pricing, driver, bookingDetails);
     const whatsappUrl = generateWhatsAppUrl(booking.customer.phone, waBody);
     results.push({ channel: "WHATSAPP", success: true, whatsappUrl });
     await logNotification({
@@ -268,22 +285,22 @@ export async function sendCompletionWithBill(booking: {
 
   // WhatsApp — generate wa.me URL with bill link
   if (settings?.whatsappEnabled) {
-    const amount = formatCurrency(booking.totalAmount as string);
-    const waBody = `Dear ${booking.customer.name},
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const waBody = `Hello ${booking.customer.name},
 
-Thank you for travelling with *${companyName}*!
+Thank you for traveling with *${companyName}* Hope you have a Pleasant journey with us 🙏.
 
-Your ride (Booking *#${booking.bookingId}*) has been completed successfully. We hope you had a pleasant journey.
+🚏Request you to provide Feedback by tapping this URL *${companyName}* , It takes two minutes of your time and helps us to Encourage and improve our services.
 
-*Total Amount:* ${amount}
+*Support "Vocal for Local" Moment*
 
-You can view and download your invoice here:
-${invoiceUrl}
+🤟Visit our website to book your return ticket with us. Have a nice day 🎁.
 
-For any queries, feel free to reach out to us.
+Regards,
+*${companyName}*
+Book again 🖇️: ${appUrl}
 
-Warm regards,
-*${companyName}*`;
+Your invoice: ${invoiceUrl}`;
     const whatsappUrl = generateWhatsAppUrl(booking.customer.phone, waBody);
     results.push({ channel: "WHATSAPP", success: true, whatsappUrl });
     await logNotification({
