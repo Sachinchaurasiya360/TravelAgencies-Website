@@ -95,9 +95,9 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   html, body { background: #fff; font-family: Arial, Helvetica, sans-serif; }
 
   .wrap {
-    width: 700px;
+    max-width: 700px;
     margin: 0 auto;
-    padding: 48px 0 56px;
+    padding: 48px 24px 56px;
     color: #1a1a1a;
     font-size: 12px;
     line-height: 1.5;
@@ -191,6 +191,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   /* ── TOTALS ── */
   .totals-table {
     width: 260px;
+    max-width: 100%;
     margin-left: auto;
     margin-top: 0;
     border-collapse: collapse;
@@ -233,7 +234,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   .bank-table td { padding: 0 28px 0 0; vertical-align: top; }
   .bank-table td:last-child { padding-right: 0; }
   .bf-l { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
-  .bf-v { font-size: 11px; font-weight: 600; color: #222; white-space: nowrap; }
+  .bf-v { font-size: 11px; font-weight: 600; color: #222; }
 
   /* ── SIGNATURES ── */
   .sig-table { width: 100%; border-collapse: collapse; margin-top: 32px; padding-top: 20px; }
@@ -265,6 +266,21 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     letter-spacing: 2.5px;
     text-transform: uppercase;
     color: #ccc;
+  }
+
+  @media screen and (max-width: 600px) {
+    .wrap { padding: 24px 16px 32px; font-size: 11px; }
+    .co-name { font-size: 15px; }
+    .inv-num { font-size: 14px; }
+    .hdr-table td { display: block; text-align: left !important; }
+    .hdr-table td:last-child { margin-top: 10px; }
+    .bill-to-name { font-size: 13px; }
+    .items thead th.amt, .items tbody td.amt { width: auto; }
+    .items tbody td.amt { font-size: 12px; }
+    .totals-table { width: 100%; }
+    .total-row td:last-child { font-size: 16px !important; }
+    .bank-table td { display: block; padding: 0 0 8px 0; }
+    .sig-table td { display: block; width: 100%; text-align: left !important; margin-bottom: 20px; }
   }
 
   @media print {

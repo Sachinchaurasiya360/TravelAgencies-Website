@@ -163,7 +163,7 @@ export default function DutySlipsPage() {
                   </div>
                   <div className="text-muted-foreground space-y-1 text-sm">
                     <p>Guest: <span className="text-foreground font-medium">{slip.guestName}</span></p>
-                    <p>Driver: <span className="text-foreground font-medium">{slip.driver.name}</span></p>
+                    <p>Driver: <span className="text-foreground font-medium">{slip.driver?.name || "-"}</span></p>
                     {slip.vehicleName && (
                       <p>Vehicle: <span className="text-foreground font-medium">{slip.vehicleName} {slip.vehicleNumber && `(${slip.vehicleNumber})`}</span></p>
                     )}
@@ -214,8 +214,8 @@ export default function DutySlipsPage() {
                           </td>
                           <td className="px-4 py-3">{slip.guestName}</td>
                           <td className="px-4 py-3">
-                            <div>{slip.driver.name}</div>
-                            <div className="text-muted-foreground text-xs">{slip.driver.phone}</div>
+                            <div>{slip.driver?.name || "-"}</div>
+                            <div className="text-muted-foreground text-xs">{slip.driver?.phone}</div>
                           </td>
                           <td className="px-4 py-3">
                             {slip.vehicleName ? (
