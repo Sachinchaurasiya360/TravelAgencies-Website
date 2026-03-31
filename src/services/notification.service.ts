@@ -248,7 +248,7 @@ export async function sendCompletionWithBill(booking: {
   totalAmount: unknown;
   customer: { name: string; phone: string; email: string | null };
   driver?: { name: string } | null;
-}, invoiceUrl: string, companyName: string): Promise<NotificationResult[]> {
+}, invoiceUrl: string, companyName: string, pdfUrl?: string): Promise<NotificationResult[]> {
   const results: NotificationResult[] = [];
   const settings = await prisma.settings.findUnique({ where: { id: "app_settings" } });
 
@@ -288,19 +288,19 @@ export async function sendCompletionWithBill(booking: {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const waBody = `Hello ${booking.customer.name},
 
-Thank you for traveling with *${companyName}* Hope you have a Pleasant journey with us 🙏.
+Thank you for traveling with *${companyName}* Hope you have a Pleasant journey with us.
 
-🚏Request you to provide Feedback by tapping this URL *${companyName}* , It takes two minutes of your time and helps us to Encourage and improve our services.
+Request you to provide Feedback by tapping this URL *${companyName}* , It takes two minutes of your time and helps us to Encourage and improve our services.
 
 *Support "Vocal for Local" Moment*
 
-🤟Visit our website to book your return ticket with us. Have a nice day 🎁.
+Visit our website to book your return ticket with us. Have a nice day.
 
 Regards,
 *${companyName}*
-Book again 🖇️: ${appUrl}
+Book again: ${appUrl}
 
-Your invoice: ${invoiceUrl}`;
+${pdfUrl ? `Download bill: ${pdfUrl}` : `View invoice: ${invoiceUrl}`}`;
     const whatsappUrl = generateWhatsAppUrl(booking.customer.phone, waBody);
     results.push({ channel: "WHATSAPP", success: true, whatsappUrl });
     await logNotification({

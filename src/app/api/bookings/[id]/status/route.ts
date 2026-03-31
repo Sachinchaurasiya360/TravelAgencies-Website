@@ -187,18 +187,17 @@ async function handleCompletionBill(
     const shareToken = randomUUID();
 
     invoice = await prisma.$transaction(async (tx) => {
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const prefix = `INV-${today}-`;
       const lastInvoice = await tx.invoice.findFirst({
-        where: { invoiceNumber: { startsWith: prefix } },
-        orderBy: { invoiceNumber: "desc" },
+        orderBy: { createdAt: "desc" },
         select: { invoiceNumber: true },
       });
-      let seq = 1;
+      let seq = 1500;
       if (lastInvoice) {
-        seq = parseInt(lastInvoice.invoiceNumber.split("-").pop() || "0", 10) + 1;
+        const parts = lastInvoice.invoiceNumber.split("-");
+        const lastNum = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(lastNum)) seq = Math.max(1500, lastNum + 1);
       }
-      const invoiceNumber = `${prefix}${seq.toString().padStart(4, "0")}`;
+      const invoiceNumber = `INV-${seq}`;
 
       return tx.invoice.create({
         data: {
@@ -275,6 +274,7 @@ async function handleCompletionBill(
   }
 
   const invoiceShareUrl = `${appUrl}/invoice/${shareToken}`;
+  const invoicePdfUrl = `${appUrl}/api/invoices/public/${shareToken}/pdf`;
 
   // 4. Fetch company name for email
   const settings = await prisma.settings.findUnique({
@@ -295,7 +295,8 @@ async function handleCompletionBill(
       driver: booking.driver,
     },
     invoiceShareUrl,
-    settings?.companyName || "Sarthak Tour and Travels"
+    settings?.companyName || "Sarthak Tour and Travels",
+    invoicePdfUrl
   ).catch(() => [] as { channel: string; whatsappUrl?: string }[]);
 
   const waResult = notifResults?.find((r) => r.channel === "WHATSAPP" && r.whatsappUrl);

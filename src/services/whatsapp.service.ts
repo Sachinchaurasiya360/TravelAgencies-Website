@@ -44,7 +44,6 @@ Journey Details for travel on *${details.travelDate}*
 Boarding Details
 *Pickup point Address*: ${details.pickupLocation}
 *Departure time*: ${pickupTime}
-*Pickup URL*: -
 
 Car Details
 *Car Number*: -
@@ -105,7 +104,6 @@ Journey Details for travel on *${travelDate}*
 Boarding Details
 *Pickup point Address*: ${from}
 *Departure time*: ${pickupTime}
-*Pickup URL*: -
 
 Car Details
 *Car Number*: ${carNumber}

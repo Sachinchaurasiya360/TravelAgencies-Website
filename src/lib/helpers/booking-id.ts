@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
@@ -18,17 +17,12 @@ export async function generateBookingId(tx?: TxClient): Promise<string> {
     select: { bookingId: true },
   });
 
-  let maxSeq = 0;
+  let maxSeq = 1499;
   for (const b of allBookings) {
     const parsed = parseInt(b.bookingId, 10);
     if (!isNaN(parsed) && parsed > maxSeq) {
       maxSeq = parsed;
     }
-  }
-
-  // If no numeric IDs exist yet, count total bookings so new IDs start after existing ones
-  if (maxSeq === 0 && allBookings.length > 0) {
-    maxSeq = allBookings.length;
   }
 
   return String(maxSeq + 1);
@@ -37,21 +31,22 @@ export async function generateBookingId(tx?: TxClient): Promise<string> {
 /** Generate an invoice number. Should be called inside a transaction. */
 export async function generateInvoiceNumber(tx?: TxClient): Promise<string> {
   const db = tx || prisma;
-  const today = format(new Date(), "yyyyMMdd");
-  const prefix = `INV-${today}-`;
 
   const lastInvoice = await db.invoice.findFirst({
-    where: { invoiceNumber: { startsWith: prefix } },
-    orderBy: { invoiceNumber: "desc" },
+    orderBy: { createdAt: "desc" },
     select: { invoiceNumber: true },
   });
 
-  let sequence = 1;
+  let sequence = 1500;
   if (lastInvoice) {
-    sequence = parseInt(lastInvoice.invoiceNumber.split("-").pop() || "0", 10) + 1;
+    const parts = lastInvoice.invoiceNumber.split("-");
+    const lastNum = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(lastNum)) {
+      sequence = Math.max(1500, lastNum + 1);
+    }
   }
 
-  return `${prefix}${sequence.toString().padStart(4, "0")}`;
+  return `INV-${sequence}`;
 }
 
 /** Generate a receipt number. Should be called inside a transaction. */

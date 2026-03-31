@@ -197,18 +197,17 @@ export async function POST(request: NextRequest) {
     // Wrap invoice number generation + creation in a transaction
     const invoice = await prisma.$transaction(async (tx) => {
       // Generate invoice number atomically
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const prefix = `INV-${today}-`;
       const lastInvoice = await tx.invoice.findFirst({
-        where: { invoiceNumber: { startsWith: prefix } },
-        orderBy: { invoiceNumber: "desc" },
+        orderBy: { createdAt: "desc" },
         select: { invoiceNumber: true },
       });
-      let seq = 1;
+      let seq = 1500;
       if (lastInvoice) {
-        seq = parseInt(lastInvoice.invoiceNumber.split("-").pop() || "0", 10) + 1;
+        const parts = lastInvoice.invoiceNumber.split("-");
+        const lastNum = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(lastNum)) seq = Math.max(1500, lastNum + 1);
       }
-      const invoiceNumber = `${prefix}${seq.toString().padStart(4, "0")}`;
+      const invoiceNumber = `INV-${seq}`;
 
       // Get amount already paid
       const paidResult = await tx.payment.aggregate({

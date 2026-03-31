@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { hash } from "bcryptjs";
 
 const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -9,45 +8,20 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("Seeding database...");
 
-  // Create all default users
-  const users = [
-    {
+  // Create super admin user (OTP login — passwordHash is unused placeholder)
+  const admin = await prisma.user.upsert({
+    where: { email: process.env.ADMIN_EMAIL || "admin@sarthaktourandtravels.com" },
+    update: {},
+    create: {
       email: process.env.ADMIN_EMAIL || "admin@sarthaktourandtravels.com",
-      password: process.env.ADMIN_PASSWORD || "Admin@123456",
       name: "Super Admin",
-      role: "SUPER_ADMIN" as const,
+      phone: process.env.ADMIN_PHONE || "7498125466",
+      passwordHash: "",
+      role: "SUPER_ADMIN",
+      isActive: true,
     },
-    {
-      email: "manager@sarthaktourandtravels.com",
-      password: "Manager@123456",
-      name: "Manager",
-      role: "ADMIN" as const,
-    },
-    {
-      email: "driver@sarthaktourandtravels.com",
-      password: "Driver@123456",
-      name: "Sample Driver",
-      role: "DRIVER" as const,
-      phone: "9876543210",
-    },
-  ];
-
-  for (const u of users) {
-    const passwordHash = await hash(u.password, 12);
-    const user = await prisma.user.upsert({
-      where: { email: u.email },
-      update: {},
-      create: {
-        email: u.email,
-        name: u.name,
-        phone: "phone" in u ? (u as { phone: string }).phone : undefined,
-        passwordHash,
-        role: u.role,
-        isActive: true,
-      },
-    });
-    console.log(`${u.role} user created: ${user.email}`);
-  }
+  });
+  console.log(`Admin user created: ${admin.phone} (${admin.email})`);
 
   // Create default settings
   const settings = await prisma.settings.upsert({
