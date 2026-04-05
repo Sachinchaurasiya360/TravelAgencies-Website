@@ -793,6 +793,12 @@ const mr: Translations = {
     submittedAt: "सबमिट केले {date}",
     totalKm: "एकूण KM",
     expenses: "खर्च",
+    editKm: "संपादित करा",
+    saveKm: "सेव्ह करा",
+    saving: "सेव्ह होत आहे...",
+    cancelEdit: "रद्द करा",
+    editSuccess: "ड्युटी स्लिप अपडेट झाली",
+    editFailed: "ड्युटी स्लिप अपडेट करणे अयशस्वी",
   },
 
   confirmDialog: {

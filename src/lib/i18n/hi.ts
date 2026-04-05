@@ -793,6 +793,12 @@ const hi: Translations = {
     submittedAt: "जमा किया {date}",
     totalKm: "कुल KM",
     expenses: "खर्चे",
+    editKm: "संपादित करें",
+    saveKm: "सेव करें",
+    saving: "सेव हो रहा है...",
+    cancelEdit: "रद्द करें",
+    editSuccess: "ड्यूटी स्लिप अपडेट हुई",
+    editFailed: "ड्यूटी स्लिप अपडेट विफल",
   },
 
   confirmDialog: {

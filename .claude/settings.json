@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "c:\\CodeBase\\TravelAgencies Website\\src\\app\\api\\duty-slips"
+    ],
+    "allow": [
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

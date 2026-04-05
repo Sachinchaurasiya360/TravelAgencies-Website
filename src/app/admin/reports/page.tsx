@@ -68,7 +68,7 @@ interface VehicleBreakdown {
 interface ChartData {
   monthlyRevenue: MonthlyRevenue[];
   statusBreakdown: StatusBreakdown[];
-  vehicleBreakdown: VehicleBreakdown[];
+  vehicleBreakdown?: VehicleBreakdown[];
 }
 
 type Period = "thisMonth" | "lastMonth" | "last3Months" | "thisYear" | "allTime";
@@ -536,7 +536,7 @@ export default function ReportsPage() {
                     <h3 className="text-sm font-semibold text-gray-900">{t.reports.vehicleDistribution}</h3>
                     <p className="text-xs text-gray-400 mt-0.5">{t.reports.revenueByVehicle}</p>
                   </div>
-                  {chartData.vehicleBreakdown.length > 0 ? (
+                  {chartData.vehicleBreakdown && chartData.vehicleBreakdown.length > 0 ? (
                     <div className="h-64 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart

@@ -102,9 +102,13 @@ export async function sendStatusNotification(booking: {
   bookingId: string;
   customer: { name: string; phone: string; email: string | null };
   totalAmount?: unknown;
+  baseFare?: unknown;
   tollCharges?: unknown;
+  parkingCharges?: unknown;
+  driverAllowance?: unknown;
   extraCharges?: unknown;
   extraChargesNote?: string | null;
+  discount?: unknown;
   pickupLocation?: string;
   dropLocation?: string;
   travelDate?: Date;
@@ -149,9 +153,13 @@ export async function sendStatusNotification(booking: {
   if (settings?.whatsappEnabled) {
     const pricing = booking.totalAmount ? {
       totalAmount: formatCurrency(booking.totalAmount as string),
+      baseFare: Number(booking.baseFare || 0),
       tollCharges: Number(booking.tollCharges || 0),
+      parkingCharges: Number(booking.parkingCharges || 0),
+      driverAllowance: Number(booking.driverAllowance || 0),
       extraCharges: Number(booking.extraCharges || 0),
       extraChargesNote: booking.extraChargesNote || undefined,
+      discount: Number(booking.discount || 0),
     } : undefined;
     const driver = booking.driver ? {
       name: booking.driver.name,
@@ -290,7 +298,7 @@ export async function sendCompletionWithBill(booking: {
 
 Thank you for traveling with *${companyName}* Hope you have a Pleasant journey with us.
 
-Request you to provide Feedback by tapping this URL *${companyName}* , It takes two minutes of your time and helps us to Encourage and improve our services.
+Request you to provide Feedback by tapping this URL https://maps.app.goo.gl/FXW3xSEyYHFGczPs7?g_st=com.google.maps.preview.copy , It takes two minutes of your time and helps us to Encourage and improve our services.
 
 *Support "Vocal for Local" Moment*
 

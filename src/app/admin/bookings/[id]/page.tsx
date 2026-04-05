@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -27,9 +27,7 @@ import {
 import {
   ArrowLeft,
   MapPin,
-  Send,
   IndianRupee,
-  MessageSquare,
   FileText,
   Share2,
   UserCheck,
@@ -40,6 +38,9 @@ import {
   CheckCircle,
   ClipboardList,
   Gauge,
+  Pencil,
+  Save,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import type { BOOKING_STATUSES } from "@/lib/constants";
@@ -151,9 +152,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const [reason, setReason] = useState("");
   const [statusLoading, setStatusLoading] = useState(false);
 
-  // Notes
-  const [noteContent, setNoteContent] = useState("");
-  const [noteLoading, setNoteLoading] = useState(false);
+
 
   // Payment recording
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -185,6 +184,76 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const [selectedVendorId, setSelectedVendorId] = useState("");
   const [vendorCost, setVendorCost] = useState("");
   const [vendorLoading, setVendorLoading] = useState(false);
+
+  // Duty slip editing
+  const [dsEditing, setDsEditing] = useState(false);
+  const [dsForm, setDsForm] = useState({
+    officeStartKm: "",
+    customerPickupKm: "",
+    customerPickupDateTime: "",
+    customerDropKm: "",
+    customerDropDateTime: "",
+    customerEndKm: "",
+    tollAmount: "",
+    parkingAmount: "",
+    otherChargeName: "",
+    otherChargeAmount: "",
+  });
+  const [dsSaving, setDsSaving] = useState(false);
+
+  function startDsEdit() {
+    if (!booking?.dutySlip) return;
+    const ds = booking.dutySlip;
+    setDsForm({
+      officeStartKm: ds.officeStartKm != null ? String(ds.officeStartKm) : "",
+      customerPickupKm: ds.customerPickupKm != null ? String(ds.customerPickupKm) : "",
+      customerPickupDateTime: ds.customerPickupDateTime || "",
+      customerDropKm: ds.customerDropKm != null ? String(ds.customerDropKm) : "",
+      customerDropDateTime: ds.customerDropDateTime || "",
+      customerEndKm: ds.customerEndKm != null ? String(ds.customerEndKm) : "",
+      tollAmount: ds.tollAmount != null && Number(ds.tollAmount) > 0 ? String(ds.tollAmount) : "",
+      parkingAmount: ds.parkingAmount != null && Number(ds.parkingAmount) > 0 ? String(ds.parkingAmount) : "",
+      otherChargeName: ds.otherChargeName || "",
+      otherChargeAmount: ds.otherChargeAmount != null && Number(ds.otherChargeAmount) > 0 ? String(ds.otherChargeAmount) : "",
+    });
+    setDsEditing(true);
+  }
+
+  async function saveDsEdit() {
+    if (!booking?.dutySlip) return;
+    setDsSaving(true);
+    try {
+      const body: Record<string, unknown> = {};
+      if (dsForm.officeStartKm !== "") body.officeStartKm = Number(dsForm.officeStartKm);
+      if (dsForm.customerPickupKm !== "") body.customerPickupKm = Number(dsForm.customerPickupKm);
+      body.customerPickupDateTime = dsForm.customerPickupDateTime || undefined;
+      if (dsForm.customerDropKm !== "") body.customerDropKm = Number(dsForm.customerDropKm);
+      body.customerDropDateTime = dsForm.customerDropDateTime || undefined;
+      if (dsForm.customerEndKm !== "") body.customerEndKm = Number(dsForm.customerEndKm);
+      if (dsForm.tollAmount !== "") body.tollAmount = Number(dsForm.tollAmount);
+      if (dsForm.parkingAmount !== "") body.parkingAmount = Number(dsForm.parkingAmount);
+      if (dsForm.otherChargeName) body.otherChargeName = dsForm.otherChargeName;
+      if (dsForm.otherChargeAmount !== "") body.otherChargeAmount = Number(dsForm.otherChargeAmount);
+
+      const res = await fetch(`/api/duty-slips/${booking.dutySlip.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(t.dutySlip.editSuccess);
+        setDsEditing(false);
+        fetchBooking();
+      } else {
+        toast.error(result.error || t.dutySlip.editFailed);
+      }
+    } catch {
+      toast.error(t.dutySlip.editFailed);
+    } finally {
+      setDsSaving(false);
+    }
+  }
 
   async function fetchBooking() {
     try {
@@ -234,6 +303,42 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     loadData();
   }, [id]);
 
+  function buildConfirmationMessage() {
+    if (!booking) return "";
+    const travelDate = new Date(booking.travelDate).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "2-digit",
+      year: "numeric",
+    });
+    const vehicle = [booking.driver?.vehicleName, booking.driver?.vehicleNumber].filter(Boolean).join(" ") || "";
+    const fare = Number(booking.baseFare || 0);
+    const parking = Number(booking.parkingCharges || 0);
+    const toll = Number(booking.tollCharges || 0);
+    const driverAllowance = Number(booking.driverAllowance || 0);
+    const extra = Number(booking.extraCharges || 0);
+    const discount = Number(booking.discount || 0);
+    const total = Number(booking.totalAmount || 0);
+
+    let msg = `Your Booking for ${booking.pickupLocation} To ${booking.dropLocation} on ${travelDate} is confirmed`;
+    if (vehicle) msg += ` with ${vehicle}`;
+    msg += `\n`;
+    if (booking.pickupTime) msg += `\nPickup Time - ${booking.pickupTime}\n`;
+
+    if (fare > 0) msg += `\nFare: Rs ${fare.toFixed(2)}`;
+    if (parking > 0) msg += `\nParking- ${parking.toFixed(0)}`;
+    if (toll > 0) msg += `\nToll- ${toll.toFixed(0)}`;
+    if (driverAllowance > 0) msg += `\nDriver Allowance- ${driverAllowance.toFixed(0)}`;
+    if (extra > 0) msg += `\n${booking.extraChargesNote || "Other Charges"}- ${extra.toFixed(0)}`;
+    if (discount > 0) msg += `\nDiscount- ${discount.toFixed(0)}`;
+    if (total > 0) msg += `\nTotal Fare - ${total.toFixed(0)}`;
+
+    msg += `\n\nDrop Address - ${booking.dropLocation}`;
+    msg += `\n\nBooking & Office Contact No: 7498125466 , 9527806257.`;
+    msg += `\nOffice Locations- https://maps.app.goo.gl/FXW3xSEyYHFGczPs7?g_st=com.google.maps.preview.copy`;
+
+    return msg;
+  }
+
   async function handleStatusChange() {
     if (!statusDialog.status) return;
     setStatusLoading(true);
@@ -245,7 +350,13 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       });
       const result = await res.json();
       if (result.success) {
-        if (result.data?.whatsappUrl) {
+        if (statusDialog.status === "CONFIRMED" && booking) {
+          const message = buildConfirmationMessage();
+          const phone = booking.customer.phone.replace(/\D/g, "");
+          const fullPhone = phone.startsWith("91") ? phone : `91${phone}`;
+          const url = `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`;
+          window.open(url, "_blank");
+        } else if (result.data?.whatsappUrl) {
           window.open(result.data.whatsappUrl, "_blank");
         }
         toast.success(interpolate(t.bookingDetail.statusUpdated, { status: getStatusLabel(t, statusDialog.status) }));
@@ -291,30 +402,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       toast.error(t.bookingDetail.pricingFailed);
     } finally {
       setPricingLoading(false);
-    }
-  }
-
-  async function handleAddNote() {
-    if (!noteContent.trim()) return;
-    setNoteLoading(true);
-    try {
-      const res = await fetch(`/api/bookings/${id}/notes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: noteContent }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        toast.success(t.bookingDetail.noteAdded);
-        setNoteContent("");
-        fetchBooking();
-      } else {
-        toast.error(result.error);
-      }
-    } catch {
-      toast.error(t.bookingDetail.noteFailed);
-    } finally {
-      setNoteLoading(false);
     }
   }
 
@@ -1371,16 +1458,35 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   <ClipboardList className="h-5 w-5 text-orange-500" />
                   {t.dutySlip.title}
                 </span>
-                {isSubmitted ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800">
-                    <CheckCircle className="h-3 w-3" />
-                    {t.dutySlip.submitted}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-medium text-yellow-800">
-                    {t.dutySlip.pending}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {dsEditing ? (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => setDsEditing(false)} disabled={dsSaving}>
+                        <X className="h-3.5 w-3.5 mr-1" />
+                        {t.dutySlip.cancelEdit}
+                      </Button>
+                      <Button size="sm" onClick={saveDsEdit} disabled={dsSaving}>
+                        <Save className="h-3.5 w-3.5 mr-1" />
+                        {dsSaving ? t.dutySlip.saving : t.dutySlip.saveKm}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={startDsEdit}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      {t.dutySlip.editKm}
+                    </Button>
+                  )}
+                  {isSubmitted ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800">
+                      <CheckCircle className="h-3 w-3" />
+                      {t.dutySlip.submitted}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-medium text-yellow-800">
+                      {t.dutySlip.pending}
+                    </span>
+                  )}
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1424,38 +1530,82 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   {/* Office Start - KM only */}
                   <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.officeStart}</p>
-                    <div className="text-sm">
-                      <span>{ds.officeStartKm != null ? `${ds.officeStartKm} km` : "-"}</span>
-                    </div>
+                    {dsEditing ? (
+                      <Input type="number" placeholder="KM" value={dsForm.officeStartKm} onChange={e => setDsForm(p => ({ ...p, officeStartKm: e.target.value }))} className="h-8 text-sm" />
+                    ) : (
+                      <div className="text-sm">
+                        <span>{ds.officeStartKm != null ? `${ds.officeStartKm} km` : "-"}</span>
+                      </div>
+                    )}
                   </div>
                   {/* Customer Pickup - KM + Time */}
                   <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.customerPickup}</p>
-                    <div className="flex justify-between text-sm">
-                      <span>{ds.customerPickupKm != null ? `${ds.customerPickupKm} km` : "-"}</span>
-                      <span className="text-gray-500">{ds.customerPickupDateTime || "-"}</span>
-                    </div>
+                    {dsEditing ? (
+                      <div className="flex gap-2">
+                        <Input type="number" placeholder="KM" value={dsForm.customerPickupKm} onChange={e => setDsForm(p => ({ ...p, customerPickupKm: e.target.value }))} className="h-8 text-sm flex-1" />
+                        <Input type="text" placeholder={t.dutySlip.time} value={dsForm.customerPickupDateTime} onChange={e => setDsForm(p => ({ ...p, customerPickupDateTime: e.target.value }))} className="h-8 text-sm flex-1" />
+                      </div>
+                    ) : (
+                      <div className="flex justify-between text-sm">
+                        <span>{ds.customerPickupKm != null ? `${ds.customerPickupKm} km` : "-"}</span>
+                        <span className="text-gray-500">{ds.customerPickupDateTime || "-"}</span>
+                      </div>
+                    )}
                   </div>
                   {/* Customer Drop - KM + Time */}
                   <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.customerDrop}</p>
-                    <div className="flex justify-between text-sm">
-                      <span>{ds.customerDropKm != null ? `${ds.customerDropKm} km` : "-"}</span>
-                      <span className="text-gray-500">{ds.customerDropDateTime || "-"}</span>
-                    </div>
+                    {dsEditing ? (
+                      <div className="flex gap-2">
+                        <Input type="number" placeholder="KM" value={dsForm.customerDropKm} onChange={e => setDsForm(p => ({ ...p, customerDropKm: e.target.value }))} className="h-8 text-sm flex-1" />
+                        <Input type="text" placeholder={t.dutySlip.time} value={dsForm.customerDropDateTime} onChange={e => setDsForm(p => ({ ...p, customerDropDateTime: e.target.value }))} className="h-8 text-sm flex-1" />
+                      </div>
+                    ) : (
+                      <div className="flex justify-between text-sm">
+                        <span>{ds.customerDropKm != null ? `${ds.customerDropKm} km` : "-"}</span>
+                        <span className="text-gray-500">{ds.customerDropDateTime || "-"}</span>
+                      </div>
+                    )}
                   </div>
                   {/* Customer End - KM only */}
                   <div className="rounded-lg bg-gray-50 p-3">
                     <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.customerEnd}</p>
-                    <div className="text-sm">
-                      <span>{ds.customerEndKm != null ? `${ds.customerEndKm} km` : "-"}</span>
-                    </div>
+                    {dsEditing ? (
+                      <Input type="number" placeholder="KM" value={dsForm.customerEndKm} onChange={e => setDsForm(p => ({ ...p, customerEndKm: e.target.value }))} className="h-8 text-sm" />
+                    ) : (
+                      <div className="text-sm">
+                        <span>{ds.customerEndKm != null ? `${ds.customerEndKm} km` : "-"}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Expenses */}
-              {(Number(ds.tollAmount || 0) > 0 || Number(ds.parkingAmount || 0) > 0 || Number(ds.otherChargeAmount || 0) > 0) && (
+              {dsEditing ? (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold">{t.dutySlip.dutyExpenses}</h3>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg bg-gray-50 p-3">
+                      <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.tollAmount}</p>
+                      <Input type="number" placeholder="0" value={dsForm.tollAmount} onChange={e => setDsForm(p => ({ ...p, tollAmount: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3">
+                      <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.parkingAmount}</p>
+                      <Input type="number" placeholder="0" value={dsForm.parkingAmount} onChange={e => setDsForm(p => ({ ...p, parkingAmount: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3">
+                      <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.otherChargeName}</p>
+                      <Input type="text" placeholder={t.dutySlip.otherChargeNamePlaceholder} value={dsForm.otherChargeName} onChange={e => setDsForm(p => ({ ...p, otherChargeName: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="rounded-lg bg-gray-50 p-3">
+                      <p className="text-xs font-medium text-gray-600 mb-1">{t.dutySlip.otherChargeAmount}</p>
+                      <Input type="number" placeholder="0" value={dsForm.otherChargeAmount} onChange={e => setDsForm(p => ({ ...p, otherChargeAmount: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                  </div>
+                </div>
+              ) : (Number(ds.tollAmount || 0) > 0 || Number(ds.parkingAmount || 0) > 0 || Number(ds.otherChargeAmount || 0) > 0) && (
                 <div className="space-y-2">
                   <h3 className="text-sm font-semibold">{t.dutySlip.dutyExpenses}</h3>
                   <div className="space-y-1 text-sm">
@@ -1500,49 +1650,6 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         );
       })()}
 
-      {/* Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <MessageSquare className="h-5 w-5" />
-            {t.bookingDetail.adminNotes}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Textarea
-              placeholder={t.bookingDetail.addNote}
-              value={noteContent}
-              onChange={(e) => setNoteContent(e.target.value)}
-              rows={2}
-              className="flex-1"
-            />
-            <Button
-              onClick={handleAddNote}
-              disabled={noteLoading || !noteContent.trim()}
-              size="icon"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-          {booking.notes.length > 0 && (
-            <div className="mt-4 space-y-3">
-              {booking.notes.map((note) => (
-                <div key={note.id} className="rounded border p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium">{note.user.name}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {formatDateTime(note.createdAt)}
-                    </p>
-                  </div>
-                  <p className="mt-1 text-sm">{note.content}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Status Transition Dialog */}
       <ConfirmDialog
         open={statusDialog.open}
@@ -1562,20 +1669,10 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         onConfirm={handleStatusChange}
         loading={statusLoading}
       >
-        {statusDialog.status === "CONFIRMED" && ((!booking.driver && booking.carSource !== "VENDOR_CAR") || !booking.baseFare) && (
-          <div className="space-y-2">
-            {!booking.driver && booking.carSource !== "VENDOR_CAR" && (
-              <div className="flex items-center gap-2 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span>{t.bookingDetail.noDriverWarning}</span>
-              </div>
-            )}
-            {!booking.baseFare && (
-              <div className="flex items-center gap-2 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span>{t.bookingDetail.noPricingWarning}</span>
-              </div>
-            )}
+        {statusDialog.status === "CONFIRMED" && !booking.baseFare && (
+          <div className="flex items-center gap-2 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>{t.bookingDetail.noPricingWarning}</span>
           </div>
         )}
       </ConfirmDialog>

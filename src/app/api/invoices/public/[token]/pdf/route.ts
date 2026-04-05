@@ -23,7 +23,11 @@ export async function GET(
               startDateTime: true,
               endDateTime: true,
               driverId: true,
-              dutySlip: { select: { signatureData: true, signedAt: true } },
+              travelDate: true,
+              pickupLocation: true,
+              dropLocation: true,
+              vehiclePreference: true,
+              dutySlip: { select: { signatureData: true, signedAt: true, vehicleNumber: true, vehicleName: true } },
             },
           },
         },
@@ -89,6 +93,11 @@ export async function GET(
       signedAt: invoice.signedAt,
       dutySlipSignatureData: invoice.booking.dutySlip?.signatureData,
       dutySlipSignedAt: invoice.booking.dutySlip?.signedAt,
+      vehicleNumber: invoice.booking.dutySlip?.vehicleNumber,
+      vehicleName: invoice.booking.dutySlip?.vehicleName || invoice.booking.vehiclePreference,
+      travelDate: invoice.booking.travelDate,
+      pickupLocation: invoice.booking.pickupLocation,
+      dropLocation: invoice.booking.dropLocation,
     });
 
     return new Response(html, {

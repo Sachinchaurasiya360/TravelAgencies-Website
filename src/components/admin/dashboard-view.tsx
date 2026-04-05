@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDate } from "@/lib/helpers/date";
+import { Button } from "@/components/ui/button";
 import {
   CalendarCheck,
   Clock,
@@ -14,6 +15,7 @@ import {
   MapPin,
   CheckCircle,
   Car,
+  Send,
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardActions } from "@/components/admin/dashboard-actions";
@@ -41,12 +43,63 @@ interface DashboardData {
     vehicleName: string | null;
     vehicleNumber: string | null;
     driverName: string;
+    driverPhone: string;
     bookingId: string;
     bookingDbId: string;
     travelDate: string;
     pickupLocation: string;
     dropLocation: string;
+    pickupTime: string | null;
+    baseFare: string | null;
+    tollCharges: string | null;
+    parkingCharges: string | null;
+    driverAllowance: string | null;
+    extraCharges: string | null;
+    extraChargesNote: string | null;
+    discount: string | null;
+    totalAmount: string | null;
+    customerName: string;
+    customerPhone: string;
   }[];
+}
+
+function buildWhatsAppMessage(ds: DashboardData["upcomingDutySlips"][number]) {
+  const travelDate = new Date(ds.travelDate).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  const carNumber = [ds.vehicleName, ds.vehicleNumber].filter(Boolean).join(" ") || "-";
+  const driverInfo = ds.driverName
+    ? `${ds.driverName}${ds.driverPhone ? ` (${ds.driverPhone})` : ""}`
+    : "-";
+
+  let msg = `Dear ${ds.guestName},\n`;
+  msg += `\nJourney details`;
+  msg += `\nFrom: ${ds.pickupLocation} To ${ds.dropLocation} On ${travelDate}`;
+  msg += `\nBooking No: ${ds.bookingId}`;
+  msg += `\nBoarding: ${ds.pickupLocation}`;
+  if (ds.pickupTime) msg += ` At ${ds.pickupTime},`;
+  msg += `\nAddress: ${ds.dropLocation}`;
+  msg += `\n\nCar Details:-`;
+  msg += `\nCar No: ${carNumber}`;
+  msg += `\nDriver details: ${driverInfo}`;
+  msg += `\n\nSarthak Tours And Travels`;
+  msg += `\nYour Travel Partner`;
+
+  return msg;
+}
+
+function sendWhatsApp(ds: DashboardData["upcomingDutySlips"][number]) {
+  if (!ds.driverName) {
+    alert("Warning: No driver has been assigned to this booking yet!");
+  }
+  const message = buildWhatsAppMessage(ds);
+  const phone = ds.customerPhone.replace(/\D/g, "");
+  const fullPhone = phone.startsWith("91") ? phone : `91${phone}`;
+  const url = `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`;
+  window.open(url, "_blank");
 }
 
 export function DashboardView({ data }: { data: DashboardData }) {
@@ -179,38 +232,48 @@ export function DashboardView({ data }: { data: DashboardData }) {
               {/* Mobile card view */}
               <div className="divide-y divide-gray-100 sm:hidden">
                 {data.upcomingDutySlips.map((ds) => (
-                  <Link
-                    key={ds.id}
-                    href={`/admin/bookings/${ds.bookingDbId}`}
-                    className="block px-4 py-3 transition-colors hover:bg-gray-50/50"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-900">
-                          #{ds.bookingId}
-                        </span>
-                        {ds.status === "SUBMITTED" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-800">
-                            <CheckCircle className="h-3 w-3" />
-                            {t.dutySlip.submitted}
+                  <div key={ds.id} className="px-4 py-3 transition-colors hover:bg-gray-50/50">
+                    <Link
+                      href={`/admin/bookings/${ds.bookingDbId}`}
+                      className="block"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-900">
+                            #{ds.bookingId}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-800">
-                            {t.dutySlip.pending}
-                          </span>
+                          {ds.status === "SUBMITTED" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-800">
+                              <CheckCircle className="h-3 w-3" />
+                              {t.dutySlip.submitted}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-800">
+                              {t.dutySlip.pending}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-400">{formatDate(ds.travelDate)}</span>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-600">{ds.guestName}</p>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
+                        <Car className="h-3 w-3" />
+                        <span>{ds.driverName}</span>
+                        {ds.vehicleNumber && (
+                          <span className="text-gray-300">· {ds.vehicleNumber}</span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-400">{formatDate(ds.travelDate)}</span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-600">{ds.guestName}</p>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
-                      <Car className="h-3 w-3" />
-                      <span>{ds.driverName}</span>
-                      {ds.vehicleNumber && (
-                        <span className="text-gray-300">· {ds.vehicleNumber}</span>
-                      )}
-                    </div>
-                  </Link>
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 h-7 text-xs text-green-700 border-green-200 hover:bg-green-50"
+                      onClick={() => sendWhatsApp(ds)}
+                    >
+                      <Send className="h-3 w-3 mr-1" />
+                      Send Message
+                    </Button>
+                  </div>
                 ))}
               </div>
 
@@ -236,6 +299,8 @@ export function DashboardView({ data }: { data: DashboardData }) {
                       </th>
                       <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-gray-400">
                         {t.dashboard.status}
+                      </th>
+                      <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-gray-400">
                       </th>
                     </tr>
                   </thead>
@@ -285,6 +350,17 @@ export function DashboardView({ data }: { data: DashboardData }) {
                               {t.dutySlip.pending}
                             </span>
                           )}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs text-green-700 border-green-200 hover:bg-green-50"
+                            onClick={() => sendWhatsApp(ds)}
+                          >
+                            <Send className="h-3 w-3 mr-1" />
+                            Send Message
+                          </Button>
                         </td>
                       </tr>
                     ))}

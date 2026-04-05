@@ -12,7 +12,9 @@
       "Bash(npx tsx:*)",
       "Bash(npx prisma generate:*)",
       "Bash(npm run build:*)",
-      "Bash(npx prisma migrate dev:*)"
+      "Bash(npx prisma migrate dev:*)",
+      "WebFetch(domain:capcom6.github.io)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

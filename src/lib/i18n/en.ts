@@ -791,6 +791,12 @@ const en = {
     submittedAt: "Submitted at {date}",
     totalKm: "Total KM",
     expenses: "Expenses",
+    editKm: "Edit",
+    saveKm: "Save",
+    saving: "Saving...",
+    cancelEdit: "Cancel",
+    editSuccess: "Duty slip updated",
+    editFailed: "Failed to update duty slip",
   },
 
   confirmDialog: {

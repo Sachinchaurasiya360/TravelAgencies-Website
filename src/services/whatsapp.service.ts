@@ -31,7 +31,7 @@ export function bookingConfirmationWhatsApp(
     companyName?: string;
   }
 ): string {
-  const company = details.companyName || "Sarthak Unity Tours And Travels";
+  const company = details.companyName || "Sarthak Tours And Travels";
   const pickupTime = details.pickupTime || "-";
 
   return `Dear ${customerName},
@@ -57,11 +57,15 @@ export function statusUpdateWhatsApp(
   bookingId: string,
   status: string,
   message: string,
-  _pricing?: {
+  pricing?: {
     totalAmount: string;
+    baseFare: number;
     tollCharges: number;
-    extraChargesNote?: string;
+    parkingCharges: number;
+    driverAllowance: number;
     extraCharges: number;
+    extraChargesNote?: string;
+    discount: number;
   } | null,
   driver?: {
     name: string;
@@ -79,38 +83,39 @@ export function statusUpdateWhatsApp(
   } | null
 ): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const company = bookingDetails?.companyName || "Sarthak Unity Tours And Travels";
+  const company = bookingDetails?.companyName || "Sarthak Tours And Travels";
   const rawStatus = status.toUpperCase();
 
   // ── CONFIRMED ──────────────────────────────────────────────
   if (rawStatus === "CONFIRMED" || rawStatus === "BOOKING CONFIRMED") {
-    const customerName = bookingDetails?.customerName || "Customer";
     const travelDate = bookingDetails?.travelDate || "-";
     const from = bookingDetails?.pickupLocation || "-";
     const to = bookingDetails?.dropLocation || "-";
-    const pickupTime = bookingDetails?.pickupTime || "-";
-    const carNumber = driver?.vehicleNumber || driver?.vehicleName || "-";
-    const driverInfo = driver
-      ? `${driver.name}${driver.phone ? ` (${driver.phone})` : ""}`
-      : "-";
+    const pickupTime = bookingDetails?.pickupTime || "";
+    const vehicle = [driver?.vehicleName, driver?.vehicleNumber].filter(Boolean).join(" ") || "";
 
-    return `Dear ${customerName},
-your journey with *${company}*
+    let msg = `Your Booking for ${from} To ${to} on ${travelDate} is confirmed`;
+    if (vehicle) msg += ` with ${vehicle}`;
+    msg += `\n`;
+    if (pickupTime) msg += `\nPickup Time - ${pickupTime}\n`;
 
-Journey Details for travel on *${travelDate}*
-*Invoice*: -
-*Trip*: ${from} *To* ${to}
+    if (pricing) {
+      const fare = pricing.baseFare;
+      if (fare > 0) msg += `\nFare: Rs ${fare.toFixed(2)}`;
+      if (pricing.parkingCharges > 0) msg += `\nParking- ${pricing.parkingCharges.toFixed(0)}`;
+      if (pricing.tollCharges > 0) msg += `\nToll- ${pricing.tollCharges.toFixed(0)}`;
+      if (pricing.driverAllowance > 0) msg += `\nDriver Allowance- ${pricing.driverAllowance.toFixed(0)}`;
+      if (pricing.extraCharges > 0) msg += `\n${pricing.extraChargesNote || "Other Charges"}- ${pricing.extraCharges.toFixed(0)}`;
+      if (pricing.discount > 0) msg += `\nDiscount- ${pricing.discount.toFixed(0)}`;
+      const total = Number(pricing.totalAmount.replace(/[^0-9.-]/g, "") || 0);
+      if (total > 0) msg += `\nTotal Fare - ${total.toFixed(0)}`;
+    }
 
-Boarding Details
-*Pickup point Address*: ${from}
-*Departure time*: ${pickupTime}
+    msg += `\n\nDrop Address - ${to}`;
+    msg += `\n\nBooking & Office Contact No: 7498125466 , 9527806257.`;
+    msg += `\nOffice Locations- https://maps.app.goo.gl/FXW3xSEyYHFGczPs7?g_st=com.google.maps.preview.copy`;
 
-Car Details
-*Car Number*: ${carNumber}
-*Driver Details*: ${driverInfo}
-
-*${company}*
-Your Travel Partner`;
+    return msg;
   }
 
   // ── CANCELLED ──────────────────────────────────────────────
@@ -157,5 +162,5 @@ ${dueDate ? `*Due Date:* ${dueDate}` : ""}
 
 Please make the payment at your earliest convenience.
 
-- Sarthak Unity Tours And Travels`;
+- Sarthak Tours And Travels`;
 }
