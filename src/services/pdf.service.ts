@@ -82,11 +82,26 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   // Build item rows
   const itemRows: string[] = [];
 
-  // Main trip row
+  // Car details row (no amount)
+  const carParts: string[] = [];
+  if (data.vehicleNumber) carParts.push(`Car Number - ${data.vehicleNumber}`);
+  if (data.vehicleName) carParts.push(data.vehicleName);
+  if (carParts.length > 0) {
+    itemRows.push(`
+      <tr>
+        <td></td>
+        <td style="font-weight:700;">${carParts.join("<br>")}</td>
+        <td></td>
+        <td></td>
+      </tr>
+    `);
+  }
+
+  // Route row with price
   itemRows.push(`
     <tr>
       <td>${travelDateStr}</td>
-      <td>${routeDesc}</td>
+      <td style="font-weight:700;">${routeDesc}</td>
       <td></td>
       <td class="amt">${fmtNum(data.subtotal)}</td>
     </tr>
@@ -109,6 +124,9 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     itemRows.push(`<tr><td></td><td>Discount</td><td></td><td class="amt">-${fmtNum(data.discount)}</td></tr>`);
   }
 
+  // Add spacer row to fill remaining space in the items area
+  itemRows.push(`<tr class="spacer-row"><td></td><td></td><td></td><td></td></tr>`);
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -116,19 +134,19 @@ export function generateInvoiceHtml(data: InvoiceData): string {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { background: #fff; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #000; }
+  html, body { background: #fff; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #000; padding: 30px; }
 
   .page {
     max-width: 794px;
-    margin: 0 auto;
+    margin: 30px auto;
     padding: 0;
-    border: 1.5px solid #000;
+    border: 2px solid #000;
   }
 
   /* ── HEADER ── */
-  .header {
+  .header-name {
     text-align: center;
-    padding: 16px 20px 10px;
+    padding: 20px 20px 14px;
     border-bottom: 1.5px solid #000;
   }
   .co-name {
@@ -138,19 +156,27 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     text-transform: uppercase;
     letter-spacing: 2px;
     line-height: 1.2;
-    margin-bottom: 4px;
-    font-family: 'Times New Roman', Times, serif;
+    font-family: 'Algerian', 'Times New Roman', Times, serif;
+  }
+  .header-phone {
+    text-align: center;
+    padding: 8px 20px;
+    border-bottom: 1.5px solid #000;
   }
   .co-phone {
     font-size: 13px;
     font-weight: 700;
-    color: #c00;
-    margin-bottom: 2px;
+    color: #000;
+  }
+  .header-tagline {
+    text-align: center;
+    padding: 8px 20px;
+    border-bottom: 1.5px solid #000;
   }
   .co-tagline {
     font-size: 13px;
     font-weight: 700;
-    color: #00c;
+    color: #000;
     text-transform: uppercase;
   }
 
@@ -158,16 +184,18 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   .info-row {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    padding: 10px 20px;
+    align-items: stretch;
+    padding: 0 0 0 20px;
     border-bottom: 1.5px solid #000;
   }
-  .info-left { font-size: 13px; }
+  .info-left { display: flex; flex-direction: column; justify-content: center; }
+  .info-left { font-size: 13px; line-height: 1.8; padding: 10px 0; }
   .info-right { text-align: right; font-size: 13px; }
-  .info-right table { margin-left: auto; border-collapse: collapse; }
-  .info-right td { padding: 1px 0; }
-  .info-right td:first-child { font-weight: 700; padding-right: 12px; }
-  .info-right td:last-child { font-weight: 700; color: #c00; text-decoration: underline; }
+  .info-right table { margin-left: auto; border-collapse: collapse; border-left: 1.5px solid #000; border-top: none; border-bottom: none; border-right: none; height: 100%; }
+  .info-right td { padding: 6px 12px; border: 1.5px solid #000; border-top: none; border-bottom: none; border-right: none; }
+  .info-right td:first-child { font-weight: 700; }
+  .info-right td:last-child { font-weight: 700; color: #c00; }
+  .info-right tr:first-child td { border-bottom: 1.5px solid #000; }
   .cust-name { font-weight: 400; }
   .cust-company { font-weight: 400; padding-left: 20px; }
 
@@ -180,7 +208,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     font-size: 13px;
     font-weight: 700;
     font-style: italic;
-    padding: 8px 10px;
+    padding: 12px 10px;
     text-align: center;
     border-bottom: 1.5px solid #000;
     border-right: 1.5px solid #000;
@@ -192,12 +220,21 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   .items-table thead th:last-child { width: 120px; }
 
   .items-table tbody td {
-    padding: 6px 10px;
+    padding: 8px 10px;
     vertical-align: top;
     border-right: 1.5px solid #000;
     font-size: 13px;
     text-align: center;
   }
+  .items-table tbody {
+    min-height: 250px;
+  }
+  .items-table tbody tr.spacer-row td {
+    height: 200px;
+    border-right: 1.5px solid #000;
+  }
+  .items-table tbody tr.spacer-row td:last-child { border-right: none; }
+  .items-table tbody td:nth-child(2) { text-align: left; }
   .items-table tbody td:last-child { border-right: none; }
   .items-table tbody td.amt { text-align: right; }
 
@@ -209,7 +246,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
 
   /* ── TOTAL ROW ── */
   .total-row td {
-    padding: 8px 10px;
+    padding: 12px 10px;
     border-top: 1.5px solid #000;
     font-weight: 700;
     font-size: 14px;
@@ -225,7 +262,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   /* E. & O. E. */
   .eoe {
     text-align: right;
-    padding: 6px 14px;
+    padding: 10px 14px;
     font-size: 13px;
     font-weight: 600;
   }
@@ -238,13 +275,13 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     border-bottom: 1.5px solid #000;
   }
   .amount-words {
-    padding: 8px 14px;
+    padding: 12px 14px;
     font-size: 13px;
     flex: 1;
   }
   .amount-words span { font-weight: 700; }
   .company-sign {
-    padding: 8px 14px;
+    padding: 80px 14px 12px;
     font-size: 13px;
     text-align: right;
     white-space: nowrap;
@@ -252,7 +289,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
 
   /* ── FOOTER ── */
   .footer-area {
-    padding: 12px 20px;
+    padding: 16px 20px;
     text-align: center;
   }
   .footer-heading {
@@ -269,8 +306,8 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   .footer-address strong { font-weight: 700; }
 
   @media screen and (max-width: 600px) {
-    .page { border: none; }
-    .co-name { font-size: 20px; }
+    .page { border: 1.5px solid #000; }
+    .co-name { font-size: 20px; letter-spacing: 1px; }
     .info-row { flex-direction: column; gap: 8px; }
     .info-right { text-align: left; }
     .info-right table { margin-left: 0; }
@@ -286,10 +323,14 @@ export function generateInvoiceHtml(data: InvoiceData): string {
 <div class="page">
 
 <!-- ── HEADER ── -->
-<div class="header">
+<div class="header-name">
   <div class="co-name">${data.companyName}</div>
-  <div class="co-phone">Mob No ${data.companyPhone}</div>
-  <div class="co-tagline">ALL TYPES VAHICAL / LOCAL/ OUTSTATION / RENTAL</div>
+</div>
+<div class="header-phone">
+  <div class="co-phone">Mob No 7498125466, 9527806257</div>
+</div>
+<div class="header-tagline">
+  <div class="co-tagline">ALL TYPES VEHICLE / LOCAL / OUTSTATION / RENTAL</div>
 </div>
 
 <!-- ── CUSTOMER & INVOICE INFO ── -->
@@ -317,18 +358,6 @@ export function generateInvoiceHtml(data: InvoiceData): string {
     </tr>
   </thead>
   <tbody>
-    ${data.vehicleNumber || data.vehicleName ? `
-    <tr>
-      <td></td>
-      <td class="car-info">
-        Car Number<br>
-        ${data.vehicleNumber || ""}<br>
-        ${data.vehicleName || ""}
-      </td>
-      <td></td>
-      <td></td>
-    </tr>
-    ` : ""}
     ${itemRows.join("")}
   </tbody>
   <tfoot>
@@ -337,6 +366,18 @@ export function generateInvoiceHtml(data: InvoiceData): string {
       <td></td>
       <td style="text-align:center;border-right:1.5px solid #000;">TOTAL</td>
       <td class="amt">${fmtNum(data.grandTotal)}</td>
+    </tr>
+    <tr class="total-row">
+      <td></td>
+      <td></td>
+      <td style="text-align:center;border-right:1.5px solid #000;">PAID</td>
+      <td class="amt">${Number(data.amountPaid) > 0 ? `-${fmtNum(data.amountPaid)}` : "0"}</td>
+    </tr>
+    <tr class="total-row">
+      <td></td>
+      <td></td>
+      <td style="text-align:center;border-right:1.5px solid #000;font-weight:900;">DUE</td>
+      <td class="amt" style="font-weight:900;color:#c00;">${fmtNum(data.balanceDue)}</td>
     </tr>
   </tfoot>
 </table>
@@ -358,7 +399,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
 <div class="footer-area">
   ${data.companyState ? `<div class="footer-heading">Head of ${data.companyState}</div>` : ""}
   <div class="footer-address">
-    <strong>Address</strong> : ${data.companyAddress}
+    <strong>Address</strong> : Shop No 1, Sw. Yashwantrao Chavan Smruti Smarak Bhavan, Sector No.27A, Near Sant Tukaram Garden Rd Pradhikaran Nigdi Pune - 411044
   </div>
 </div>
 
