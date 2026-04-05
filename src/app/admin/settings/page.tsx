@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PageHeader } from "@/components/shared/page-header";
-import { Building2, Bell, Save } from "lucide-react";
+import { Building2, Bell, Save, Smartphone } from "lucide-react";
 import { useT } from "@/lib/i18n/language-context";
 
 interface Settings {
@@ -26,6 +26,9 @@ interface Settings {
   whatsappNotifications: boolean;
   paymentReminders: boolean;
   bookingConfirmations: boolean;
+  // SMS Gate
+  smsGateUser: string;
+  smsGatePassword: string;
 }
 
 const defaultSettings: Settings = {
@@ -39,6 +42,8 @@ const defaultSettings: Settings = {
   whatsappNotifications: false,
   paymentReminders: true,
   bookingConfirmations: true,
+  smsGateUser: "",
+  smsGatePassword: "",
 };
 
 export default function SettingsPage() {
@@ -201,6 +206,21 @@ export default function SettingsPage() {
             <Separator />
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-sm font-medium">{t.settings.smsNotifications}</p>
+                <p className="text-muted-foreground text-xs">
+                  {t.settings.smsNotificationsDesc}
+                </p>
+              </div>
+              <Switch
+                checked={settings.smsNotifications}
+                onCheckedChange={(checked) =>
+                  updateField("smsNotifications", checked)
+                }
+              />
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm font-medium">{t.settings.paymentReminders}</p>
                 <p className="text-muted-foreground text-xs">
                   {t.settings.paymentRemindersDesc}
@@ -230,6 +250,46 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* SMS Gate Configuration */}
+        {settings.smsNotifications && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Smartphone className="h-5 w-5" />
+                {t.settings.smsGateConfig}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground text-xs">
+                {t.settings.smsGateDesc}
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="smsGateUser">{t.settings.smsGateUser}</Label>
+                  <Input
+                    id="smsGateUser"
+                    value={settings.smsGateUser}
+                    onChange={(e) => updateField("smsGateUser", e.target.value)}
+                    className="mt-1"
+                    placeholder="Enter username"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="smsGatePassword">{t.settings.smsGatePassword}</Label>
+                  <Input
+                    id="smsGatePassword"
+                    type="password"
+                    value={settings.smsGatePassword}
+                    onChange={(e) => updateField("smsGatePassword", e.target.value)}
+                    className="mt-1"
+                    placeholder="Enter password"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Save Button */}
         <div className="flex justify-end">

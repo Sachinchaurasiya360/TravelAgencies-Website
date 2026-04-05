@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NotificationChannel, NotificationType, NotificationStatus } from "@prisma/client";
 import { sendEmail, bookingConfirmationEmail, statusUpdateEmail, paymentReminderEmail, rideCompletionWithBillEmail } from "./email.service";
 import { generateWhatsAppUrl, bookingConfirmationWhatsApp, statusUpdateWhatsApp, paymentReminderWhatsApp } from "./whatsapp.service";
+import { sendSms } from "./sms.service";
 import { BOOKING_STATUS_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/helpers/currency";
 
@@ -91,6 +92,26 @@ export async function sendBookingConfirmation(booking: {
       recipientPhone: booking.customer.phone,
       body: waBody,
       bookingId: booking.id,
+    });
+  }
+
+  // SMS via SMS Gate
+  if (settings?.smsEnabled && settings.smsGateUser && settings.smsGatePassword) {
+    const smsBody = `Dear ${booking.customer.name}, your booking #${booking.bookingId} for ${booking.pickupLocation} to ${booking.dropLocation} on ${travelDateStr} is confirmed. - Sarthak Tours And Travels`;
+    const result = await sendSms(
+      { to: booking.customer.phone, message: smsBody },
+      { user: settings.smsGateUser, password: settings.smsGatePassword }
+    );
+    results.push({ channel: "SMS", ...result });
+    await logNotification({
+      channel: "SMS",
+      type: "BOOKING_CONFIRMATION",
+      status: result.success ? "SENT" : "FAILED",
+      recipientPhone: booking.customer.phone,
+      body: smsBody,
+      bookingId: booking.id,
+      providerMessageId: result.messageId,
+      errorMessage: result.error,
     });
   }
 
@@ -188,6 +209,27 @@ export async function sendStatusNotification(booking: {
     });
   }
 
+  // SMS via SMS Gate
+  if (settings?.smsEnabled && settings.smsGateUser && settings.smsGatePassword) {
+    const travelDateStr = booking.travelDate?.toLocaleDateString("en-IN") || "";
+    const smsBody = `Dear ${booking.customer.name}, your booking #${booking.bookingId}${travelDateStr ? ` on ${travelDateStr}` : ""} is now ${statusLabel}. ${message} - Sarthak Tours And Travels`;
+    const result = await sendSms(
+      { to: booking.customer.phone, message: smsBody },
+      { user: settings.smsGateUser, password: settings.smsGatePassword }
+    );
+    results.push({ channel: "SMS", ...result });
+    await logNotification({
+      channel: "SMS",
+      type: notificationType,
+      status: result.success ? "SENT" : "FAILED",
+      recipientPhone: booking.customer.phone,
+      body: smsBody,
+      bookingId: booking.id,
+      providerMessageId: result.messageId,
+      errorMessage: result.error,
+    });
+  }
+
   return results;
 }
 
@@ -241,6 +283,28 @@ export async function sendPaymentReminderNotification(booking: {
         body: waBody,
         bookingId: booking.id,
       });
+    }
+
+    if (channel === "SMS") {
+      const settings = await prisma.settings.findUnique({ where: { id: "app_settings" } });
+      if (settings?.smsEnabled && settings.smsGateUser && settings.smsGatePassword) {
+        const smsBody = customMessage || `Payment Reminder: Booking #${booking.bookingId}, Amount Due: ${amount}${dueDate ? `, Due Date: ${dueDate}` : ""}. Please pay at earliest. - Sarthak Tours And Travels`;
+        const result = await sendSms(
+          { to: booking.customer.phone, message: smsBody },
+          { user: settings.smsGateUser, password: settings.smsGatePassword }
+        );
+        results.push({ channel: "SMS", ...result });
+        await logNotification({
+          channel: "SMS",
+          type: "PAYMENT_REMINDER",
+          status: result.success ? "SENT" : "FAILED",
+          recipientPhone: booking.customer.phone,
+          body: smsBody,
+          bookingId: booking.id,
+          providerMessageId: result.messageId,
+          errorMessage: result.error,
+        });
+      }
     }
   }
 
@@ -318,6 +382,27 @@ ${pdfUrl ? `Download bill: ${pdfUrl}` : `View invoice: ${invoiceUrl}`}`;
       recipientPhone: booking.customer.phone,
       body: waBody,
       bookingId: booking.id,
+    });
+  }
+
+  // SMS via SMS Gate
+  if (settings?.smsEnabled && settings.smsGateUser && settings.smsGatePassword) {
+    const totalAmt = formatCurrency(booking.totalAmount as string);
+    const smsBody = `Dear ${booking.customer.name}, your ride ${booking.pickupLocation} to ${booking.dropLocation} is completed. Total: ${totalAmt}. Thank you for traveling with ${companyName}!`;
+    const result = await sendSms(
+      { to: booking.customer.phone, message: smsBody },
+      { user: settings.smsGateUser, password: settings.smsGatePassword }
+    );
+    results.push({ channel: "SMS", ...result });
+    await logNotification({
+      channel: "SMS",
+      type: "STATUS_UPDATE",
+      status: result.success ? "SENT" : "FAILED",
+      recipientPhone: booking.customer.phone,
+      body: smsBody,
+      bookingId: booking.id,
+      providerMessageId: result.messageId,
+      errorMessage: result.error,
     });
   }
 

@@ -544,6 +544,9 @@ model Settings {
   emailEnabled    Boolean @default(true)
   whatsappEnabled Boolean @default(true)
 
+  smsGateUser     String?
+  smsGatePassword String?
+
   invoicePrefix String  @default("INV")
   invoiceTerms  String? @default("Payment is due within 7 days of invoice date.")
   invoiceNotes  String?

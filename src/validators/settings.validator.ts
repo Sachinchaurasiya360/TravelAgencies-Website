@@ -30,6 +30,8 @@ export const updateSettingsSchema = z
     smsEnabled: z.boolean(),
     emailEnabled: z.boolean(),
     whatsappEnabled: z.boolean(),
+    smsGateUser: z.string().max(200),
+    smsGatePassword: z.string().max(200),
     invoicePrefix: z.string().max(10),
     invoiceTerms: z.string().max(5000),
     invoiceNotes: z.string().max(2000),
