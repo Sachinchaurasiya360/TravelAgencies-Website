@@ -56,13 +56,19 @@ interface InvoiceData {
 }
 
 export function generateInvoiceHtml(data: InvoiceData): string {
-  // Load signature image as base64
+  // Load signature image as base64 — try src/assets first (bundled by Vercel), fallback to public/
   let signatureBase64 = "";
   try {
-    const sigPath = path.join(process.cwd(), "public", "signature.png");
+    const sigPath = path.join(process.cwd(), "src", "assets", "signature.png");
     const sigBuffer = fs.readFileSync(sigPath);
     signatureBase64 = `data:image/png;base64,${sigBuffer.toString("base64")}`;
-  } catch { /* signature not found, skip */ }
+  } catch {
+    try {
+      const sigPath = path.join(process.cwd(), "public", "signature.png");
+      const sigBuffer = fs.readFileSync(sigPath);
+      signatureBase64 = `data:image/png;base64,${sigBuffer.toString("base64")}`;
+    } catch { /* signature not found, skip */ }
+  }
 
   const invoiceDate = new Date(data.invoiceDate).toLocaleDateString("en-IN", {
     day: "numeric", month: "numeric", year: "numeric",
