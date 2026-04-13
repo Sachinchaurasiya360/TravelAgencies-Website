@@ -1,5 +1,7 @@
 // PDF invoice generation using HTML template
 // This generates an HTML string that can be converted to PDF
+import fs from "fs";
+import path from "path";
 
 interface InvoiceData {
   invoiceNumber: string;
@@ -54,6 +56,14 @@ interface InvoiceData {
 }
 
 export function generateInvoiceHtml(data: InvoiceData): string {
+  // Load signature image as base64
+  let signatureBase64 = "";
+  try {
+    const sigPath = path.join(process.cwd(), "public", "signature.png");
+    const sigBuffer = fs.readFileSync(sigPath);
+    signatureBase64 = `data:image/png;base64,${sigBuffer.toString("base64")}`;
+  } catch { /* signature not found, skip */ }
+
   const invoiceDate = new Date(data.invoiceDate).toLocaleDateString("en-IN", {
     day: "numeric", month: "numeric", year: "numeric",
   });
@@ -207,7 +217,6 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   .items-table thead th {
     font-size: 13px;
     font-weight: 700;
-    font-style: italic;
     padding: 12px 10px;
     text-align: center;
     border-bottom: 1.5px solid #000;
@@ -281,7 +290,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   }
   .amount-words span { font-weight: 700; }
   .company-sign {
-    padding: 80px 14px 12px;
+    padding: 20px 14px 12px;
     font-size: 13px;
     text-align: right;
     white-space: nowrap;
@@ -324,7 +333,7 @@ export function generateInvoiceHtml(data: InvoiceData): string {
 
 <!-- ── HEADER ── -->
 <div class="header-name">
-  <div class="co-name">${data.companyName}</div>
+  <div class="co-name">${data.companyName.replace(/Tour And Travels/i, "Tours And Travels")}</div>
 </div>
 <div class="header-phone">
   <div class="co-phone">Mob No 7498125466, 9527806257</div>
@@ -392,7 +401,10 @@ export function generateInvoiceHtml(data: InvoiceData): string {
   <div class="amount-words">
     <span>Amount -</span> ${data.amountInWords || ""}
   </div>
-  <div class="company-sign">${data.companyName}</div>
+  <div class="company-sign">
+    ${signatureBase64 ? `<img src="${signatureBase64}" alt="Signature" style="height: 60px; display: block; margin-left: auto;" />` : ""}
+    ${data.companyName}
+  </div>
 </div>
 
 <!-- ── FOOTER ── -->
