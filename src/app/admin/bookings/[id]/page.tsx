@@ -41,13 +41,14 @@ import {
   Pencil,
   Save,
   X,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 import type { BOOKING_STATUSES } from "@/lib/constants";
 import { useT } from "@/lib/i18n/language-context";
 import { interpolate } from "@/lib/i18n";
 import { getStatusLabel, getPaymentMethodLabel } from "@/lib/i18n/label-maps";
-import { downloadInvoicePdf } from "@/lib/helpers/download-pdf";
+import { downloadInvoicePdf, downloadDutySlipPdf } from "@/lib/helpers/download-pdf";
 
 type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
@@ -200,6 +201,19 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     otherChargeAmount: "",
   });
   const [dsSaving, setDsSaving] = useState(false);
+  const [dsDownloading, setDsDownloading] = useState(false);
+
+  async function handleDownloadDutySlip() {
+    if (!booking?.dutySlip) return;
+    setDsDownloading(true);
+    try {
+      await downloadDutySlipPdf(booking.dutySlip.id, booking.bookingId);
+    } catch {
+      toast.error(t.dutySlip.downloadFailed);
+    } finally {
+      setDsDownloading(false);
+    }
+  }
 
   function startDsEdit() {
     if (!booking?.dutySlip) return;
@@ -1471,10 +1485,21 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                       </Button>
                     </>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={startDsEdit}>
-                      <Pencil className="h-3.5 w-3.5 mr-1" />
-                      {t.dutySlip.editKm}
-                    </Button>
+                    <>
+                      <Button size="sm" variant="outline" onClick={startDsEdit}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" />
+                        {t.dutySlip.editKm}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleDownloadDutySlip}
+                        disabled={dsDownloading}
+                      >
+                        <Download className="h-3.5 w-3.5 mr-1" />
+                        {dsDownloading ? t.common.processing : t.dutySlip.downloadPdf}
+                      </Button>
+                    </>
                   )}
                   {isSubmitted ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800">

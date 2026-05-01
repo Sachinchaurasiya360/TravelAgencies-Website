@@ -805,6 +805,8 @@ const hi: Translations = {
     cancelEdit: "रद्द करें",
     editSuccess: "ड्यूटी स्लिप अपडेट हुई",
     editFailed: "ड्यूटी स्लिप अपडेट विफल",
+    downloadPdf: "ड्यूटी स्लिप डाउनलोड",
+    downloadFailed: "ड्यूटी स्लिप डाउनलोड विफल",
   },
 
   confirmDialog: {

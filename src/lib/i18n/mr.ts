@@ -805,6 +805,8 @@ const mr: Translations = {
     cancelEdit: "रद्द करा",
     editSuccess: "ड्युटी स्लिप अपडेट झाली",
     editFailed: "ड्युटी स्लिप अपडेट करणे अयशस्वी",
+    downloadPdf: "ड्युटी स्लिप डाउनलोड",
+    downloadFailed: "ड्युटी स्लिप डाउनलोड अयशस्वी",
   },
 
   confirmDialog: {

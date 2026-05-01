@@ -10,10 +10,10 @@ async function main() {
 
   // Create super admin user (OTP login — passwordHash is unused placeholder)
   const admin = await prisma.user.upsert({
-    where: { email: process.env.ADMIN_EMAIL || "admin@sarthaktourandtravels.com" },
+    where: { email: process.env.ADMIN_EMAIL || "sarthaktourandtravelpune@gmail.com" },
     update: {},
     create: {
-      email: process.env.ADMIN_EMAIL || "admin@sarthaktourandtravels.com",
+      email: process.env.ADMIN_EMAIL || "sarthaktourandtravelpune@gmail.com",
       name: "Super Admin",
       phone: process.env.ADMIN_PHONE || "7498125466",
       passwordHash: "",

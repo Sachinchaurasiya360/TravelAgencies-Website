@@ -803,6 +803,8 @@ const en = {
     cancelEdit: "Cancel",
     editSuccess: "Duty slip updated",
     editFailed: "Failed to update duty slip",
+    downloadPdf: "Download Duty Slip",
+    downloadFailed: "Failed to download duty slip",
   },
 
   confirmDialog: {

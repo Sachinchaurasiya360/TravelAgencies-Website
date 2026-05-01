@@ -1,19 +1,6 @@
-/**
- * Downloads an invoice as a PDF by fetching its HTML,
- * rendering it in a hidden iframe, capturing with html2canvas,
- * and generating a PDF with jsPDF — all without leaving the page.
- */
-export async function downloadInvoicePdf(
-  invoiceId: string,
-  invoiceNumber?: string
-): Promise<void> {
+async function htmlToPdf(html: string, filename: string): Promise<void> {
   const { default: html2canvas } = await import("html2canvas-pro");
   const { jsPDF } = await import("jspdf");
-
-  // Fetch the invoice HTML from the server
-  const res = await fetch(`/api/invoices/${invoiceId}/pdf`);
-  if (!res.ok) throw new Error("Failed to fetch invoice");
-  const html = await res.text();
 
   // Create a hidden iframe to render the HTML
   const iframe = document.createElement("iframe");
@@ -82,12 +69,38 @@ export async function downloadInvoicePdf(
       }
     }
 
-    // Download the PDF
-    const filename = invoiceNumber
-      ? `${invoiceNumber}.pdf`
-      : `invoice-${invoiceId}.pdf`;
     pdf.save(filename);
   } finally {
     document.body.removeChild(iframe);
   }
+}
+
+/**
+ * Downloads an invoice as a PDF by fetching its HTML,
+ * rendering it in a hidden iframe, capturing with html2canvas,
+ * and generating a PDF with jsPDF — all without leaving the page.
+ */
+export async function downloadInvoicePdf(
+  invoiceId: string,
+  invoiceNumber?: string
+): Promise<void> {
+  const res = await fetch(`/api/invoices/${invoiceId}/pdf`);
+  if (!res.ok) throw new Error("Failed to fetch invoice");
+  const html = await res.text();
+  const filename = invoiceNumber ? `${invoiceNumber}.pdf` : `invoice-${invoiceId}.pdf`;
+  await htmlToPdf(html, filename);
+}
+
+/**
+ * Downloads a duty slip as a PDF using the same render pipeline as invoices.
+ */
+export async function downloadDutySlipPdf(
+  dutySlipId: string,
+  bookingId?: string
+): Promise<void> {
+  const res = await fetch(`/api/duty-slips/${dutySlipId}/pdf`);
+  if (!res.ok) throw new Error("Failed to fetch duty slip");
+  const html = await res.text();
+  const filename = bookingId ? `duty-slip-${bookingId}.pdf` : `duty-slip-${dutySlipId}.pdf`;
+  await htmlToPdf(html, filename);
 }
