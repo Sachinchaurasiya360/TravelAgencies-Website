@@ -5,6 +5,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -23,6 +25,49 @@ import { useT } from "@/lib/i18n/language-context";
 import { interpolate } from "@/lib/i18n";
 import { getStatusLabel } from "@/lib/i18n/label-maps";
 import { Search, CalendarCheck, ChevronLeft, ChevronRight, Download } from "lucide-react";
+
+const BOOKING_EXPORT_COLUMNS = [
+  { key: "bookingId", label: "Booking ID" },
+  { key: "customerName", label: "Customer" },
+  { key: "customerPhone", label: "Phone" },
+  { key: "customerEmail", label: "Email" },
+  { key: "pickupLocation", label: "Pickup" },
+  { key: "pickupAddress", label: "Pickup Address" },
+  { key: "dropLocation", label: "Drop" },
+  { key: "dropAddress", label: "Drop Address" },
+  { key: "travelDate", label: "Travel Date" },
+  { key: "returnDate", label: "Return Date" },
+  { key: "pickupTime", label: "Pickup Time" },
+  { key: "vehiclePreference", label: "Vehicle Preference" },
+  { key: "carSource", label: "Car Source" },
+  { key: "driverName", label: "Driver" },
+  { key: "vendorName", label: "Vendor" },
+  { key: "status", label: "Status" },
+  { key: "baseFare", label: "Base Fare" },
+  { key: "tollCharges", label: "Toll" },
+  { key: "parkingCharges", label: "Parking" },
+  { key: "driverAllowance", label: "Driver Allowance" },
+  { key: "extraCharges", label: "Extra Charges" },
+  { key: "discount", label: "Discount" },
+  { key: "totalAmount", label: "Total" },
+  { key: "advanceAmount", label: "Advance" },
+  { key: "paymentStatus", label: "Payment Status" },
+  { key: "specialRequests", label: "Special Requests" },
+  { key: "adminRemarks", label: "Admin Remarks" },
+  { key: "createdAt", label: "Created At" },
+];
+
+const DEFAULT_EXPORT_COLUMNS = [
+  "bookingId",
+  "customerName",
+  "customerPhone",
+  "pickupLocation",
+  "dropLocation",
+  "travelDate",
+  "status",
+  "totalAmount",
+  "paymentStatus",
+];
 
 interface Booking {
   id: string;
@@ -43,18 +88,57 @@ export default function BookingsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [exporting, setExporting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportDateMode, setExportDateMode] = useState<"all" | "month" | "custom">("all");
+  const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [exportFromDate, setExportFromDate] = useState("");
+  const [exportToDate, setExportToDate] = useState("");
+  const [exportColumns, setExportColumns] = useState<string[]>(DEFAULT_EXPORT_COLUMNS);
+
+  const getExportDateRange = () => {
+    if (exportDateMode === "month") {
+      const [year, month] = exportMonth.split("-").map(Number);
+      const fromDate = `${exportMonth}-01`;
+      const lastDay = new Date(year, month, 0).getDate().toString().padStart(2, "0");
+      const toDate = `${exportMonth}-${lastDay}`;
+      return { fromDate, toDate };
+    }
+
+    if (exportDateMode === "custom") {
+      return {
+        fromDate: exportFromDate || undefined,
+        toDate: exportToDate || undefined,
+      };
+    }
+
+    return {};
+  };
+
+  const toggleExportColumn = (key: string, checked: boolean) => {
+    setExportColumns((current) =>
+      checked ? [...current, key] : current.filter((value) => value !== key)
+    );
+  };
 
   const handleExport = async () => {
+    if (exportColumns.length === 0) {
+      toast.error("Select at least one column to export");
+      return;
+    }
+
     setExporting(true);
     try {
       const filters: Record<string, string> = {};
       if (search) filters.search = search;
       if (statusFilter !== "all") filters.status = statusFilter;
+      const dateRange = getExportDateRange();
+      if (dateRange.fromDate) filters.fromDate = dateRange.fromDate;
+      if (dateRange.toDate) filters.toDate = dateRange.toDate;
 
       const res = await fetch("/api/reports/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "bookings", filters }),
+        body: JSON.stringify({ type: "bookings", filters, columns: exportColumns }),
       });
 
       if (!res.ok) throw new Error("Export failed");
@@ -111,11 +195,117 @@ export default function BookingsPage() {
           <h1 className="text-2xl font-bold tracking-tight">{t.bookings.title}</h1>
           <p className="text-muted-foreground">{t.bookings.subtitle}</p>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={exporting} className="w-full sm:w-auto">
+        <Button
+          variant="outline"
+          onClick={() => (exportOpen ? handleExport() : setExportOpen(true))}
+          disabled={exporting}
+          className="w-full sm:w-auto"
+        >
           <Download className="mr-2 h-4 w-4" />
           {exporting ? t.common.exporting : t.bookings.exportExcel}
         </Button>
       </div>
+
+      {exportOpen && (
+        <Card>
+          <CardContent className="space-y-5 pt-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <Label>Date Range</Label>
+                <Select value={exportDateMode} onValueChange={(value) => setExportDateMode(value as "all" | "month" | "custom")}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All dates</SelectItem>
+                    <SelectItem value="month">Choose month</SelectItem>
+                    <SelectItem value="custom">Custom dates</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {exportDateMode === "month" && (
+                <div>
+                  <Label htmlFor="exportMonth">Month</Label>
+                  <Input
+                    id="exportMonth"
+                    type="month"
+                    value={exportMonth}
+                    onChange={(event) => setExportMonth(event.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+              )}
+
+              {exportDateMode === "custom" && (
+                <>
+                  <div>
+                    <Label htmlFor="exportFromDate">From Date</Label>
+                    <Input
+                      id="exportFromDate"
+                      type="date"
+                      value={exportFromDate}
+                      onChange={(event) => setExportFromDate(event.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="exportToDate">To Date</Label>
+                    <Input
+                      id="exportToDate"
+                      type="date"
+                      value={exportToDate}
+                      onChange={(event) => setExportToDate(event.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <Label>Columns to Export</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setExportColumns(BOOKING_EXPORT_COLUMNS.map((column) => column.key))}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setExportColumns(DEFAULT_EXPORT_COLUMNS)}
+                  >
+                    Default
+                  </Button>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {BOOKING_EXPORT_COLUMNS.map((column) => (
+                  <label key={column.key} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={exportColumns.includes(column.key)}
+                      onCheckedChange={(checked) => toggleExportColumn(column.key, checked === true)}
+                    />
+                    <span>{column.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={handleExport} disabled={exporting || exportColumns.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                {exporting ? t.common.exporting : t.bookings.exportExcel}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>

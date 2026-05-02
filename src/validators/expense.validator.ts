@@ -6,6 +6,7 @@ export const createExpenseSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
   amount: z.number().positive("Amount must be positive"),
   expenseDate: z.coerce.date().optional(),
+  vehicleNumber: z.string().trim().max(50).nullable().optional(),
   notes: z.string().max(1000).optional(),
 });
 

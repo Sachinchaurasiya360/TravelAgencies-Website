@@ -7,6 +7,7 @@ import { BookingStatus, ActivityAction, InvoiceStatus } from "@prisma/client";
 import { sendStatusNotification, sendCompletionWithBill } from "@/services/notification.service";
 import { logActivity } from "@/services/activity-log.service";
 import { amountToWords } from "@/lib/helpers/currency";
+import { invoiceNumberForBooking } from "@/lib/helpers/booking-id";
 import { randomUUID } from "crypto";
 
 // PATCH /api/bookings/[id]/status - Transition booking status
@@ -191,17 +192,7 @@ async function handleCompletionBill(
     const shareToken = randomUUID();
 
     invoice = await prisma.$transaction(async (tx) => {
-      const lastInvoice = await tx.invoice.findFirst({
-        orderBy: { createdAt: "desc" },
-        select: { invoiceNumber: true },
-      });
-      let seq = 1500;
-      if (lastInvoice) {
-        const parts = lastInvoice.invoiceNumber.split("-");
-        const lastNum = parseInt(parts[parts.length - 1], 10);
-        if (!isNaN(lastNum)) seq = Math.max(1500, lastNum + 1);
-      }
-      const invoiceNumber = `INV-${seq}`;
+      const invoiceNumber = invoiceNumberForBooking(booking.bookingId);
 
       return tx.invoice.create({
         data: {

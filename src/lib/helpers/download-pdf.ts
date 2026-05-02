@@ -2,13 +2,16 @@ async function htmlToPdf(html: string, filename: string): Promise<void> {
   const { default: html2canvas } = await import("html2canvas-pro");
   const { jsPDF } = await import("jspdf");
 
+  const renderWidth = 794; // A4 width in px at 96dpi
+  const renderHeight = 1123; // A4 height in px at 96dpi
+
   // Create a hidden iframe to render the HTML
   const iframe = document.createElement("iframe");
   iframe.style.position = "fixed";
   iframe.style.left = "-9999px";
   iframe.style.top = "0";
-  iframe.style.width = "794px"; // A4 width in px at 96dpi
-  iframe.style.height = "1123px"; // A4 height
+  iframe.style.width = `${renderWidth}px`;
+  iframe.style.height = `${renderHeight}px`;
   iframe.style.border = "none";
   document.body.appendChild(iframe);
 
@@ -37,8 +40,9 @@ async function htmlToPdf(html: string, filename: string): Promise<void> {
       scale: 2,
       useCORS: true,
       logging: false,
-      width: 794,
-      windowWidth: 794,
+      width: renderWidth,
+      windowWidth: renderWidth,
+      windowHeight: renderHeight,
     });
 
     // Generate PDF from canvas
@@ -52,22 +56,12 @@ async function htmlToPdf(html: string, filename: string): Promise<void> {
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
     const canvasRatio = canvas.height / canvas.width;
-    const imgHeight = pdfWidth * canvasRatio;
+    const fullWidthHeight = pdfWidth * canvasRatio;
+    const renderPdfWidth = fullWidthHeight > pdfHeight ? pdfHeight / canvasRatio : pdfWidth;
+    const renderPdfHeight = fullWidthHeight > pdfHeight ? pdfHeight : fullWidthHeight;
+    const x = (pdfWidth - renderPdfWidth) / 2;
 
-    // If content fits on one page (with 5mm tolerance), render single page
-    // Otherwise paginate
-    if (imgHeight <= pdfHeight + 5) {
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, imgHeight);
-    } else {
-      let yOffset = 0;
-      let remainingHeight = imgHeight;
-      while (remainingHeight > 5) {
-        if (yOffset > 0) pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, -yOffset, pdfWidth, imgHeight);
-        yOffset += pdfHeight;
-        remainingHeight -= pdfHeight;
-      }
-    }
+    pdf.addImage(imgData, "PNG", x, 0, renderPdfWidth, renderPdfHeight);
 
     pdf.save(filename);
   } finally {

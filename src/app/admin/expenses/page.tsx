@@ -40,6 +40,7 @@ interface Expense {
   description: string;
   amount: string;
   expenseDate: string;
+  vehicleNumber: string | null;
   notes: string | null;
   createdBy: { id: string; name: string };
 }
@@ -63,8 +64,11 @@ export default function ExpensesPage() {
     description: "",
     amount: "",
     expenseDate: new Date().toISOString().split("T")[0],
+    vehicleNumber: "",
     notes: "",
   });
+
+  const showVehicleNumber = form.category === "FUEL" || form.category === "CNG";
 
   // Delete
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: string | null }>({
@@ -110,6 +114,7 @@ export default function ExpensesPage() {
       description: "",
       amount: "",
       expenseDate: new Date().toISOString().split("T")[0],
+      vehicleNumber: "",
       notes: "",
     });
     setEditingId(null);
@@ -131,6 +136,7 @@ export default function ExpensesPage() {
           description: form.description,
           amount: parseFloat(form.amount),
           expenseDate: form.expenseDate || undefined,
+          vehicleNumber: showVehicleNumber ? form.vehicleNumber || undefined : null,
           notes: form.notes || undefined,
         }),
       });
@@ -175,6 +181,7 @@ export default function ExpensesPage() {
       description: expense.description,
       amount: expense.amount,
       expenseDate: new Date(expense.expenseDate).toISOString().split("T")[0],
+      vehicleNumber: expense.vehicleNumber || "",
       notes: expense.notes || "",
     });
     setEditingId(expense.id);
@@ -224,7 +231,13 @@ export default function ExpensesPage() {
                   <Label htmlFor="category">{t.expenses.categoryRequired}</Label>
                   <Select
                     value={form.category}
-                    onValueChange={(v) => setForm({ ...form, category: v })}
+                    onValueChange={(v) =>
+                      setForm({
+                        ...form,
+                        category: v,
+                        vehicleNumber: v === "FUEL" || v === "CNG" ? form.vehicleNumber : "",
+                      })
+                    }
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder={t.expenses.selectCategory} />
@@ -274,6 +287,19 @@ export default function ExpensesPage() {
                     className="mt-1"
                   />
                 </div>
+                {showVehicleNumber && (
+                  <div>
+                    <Label htmlFor="vehicleNumber">{t.expenses.vehicleNumberOptional}</Label>
+                    <Input
+                      id="vehicleNumber"
+                      type="text"
+                      placeholder={t.expenses.vehicleNumberPlaceholder}
+                      value={form.vehicleNumber}
+                      onChange={(e) => setForm({ ...form, vehicleNumber: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="notes">{t.expenses.notesOptional}</Label>
@@ -378,6 +404,9 @@ export default function ExpensesPage() {
                         <td className="p-4">
                           <div>
                             <p className="font-medium">{expense.description}</p>
+                            {expense.vehicleNumber && (
+                              <p className="text-muted-foreground mt-0.5 text-xs">Car No: {expense.vehicleNumber}</p>
+                            )}
                             {expense.notes && (
                               <p className="text-muted-foreground text-xs mt-0.5">{expense.notes}</p>
                             )}

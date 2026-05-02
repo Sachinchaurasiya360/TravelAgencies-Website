@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { InvoiceStatus, ActivityAction } from "@prisma/client";
 import { amountToWords } from "@/lib/helpers/currency";
+import { invoiceNumberForBooking } from "@/lib/helpers/booking-id";
 import { successResponse, errorResponse } from "@/lib/api-helpers";
 import { logActivity } from "@/services/activity-log.service";
 
@@ -52,17 +53,7 @@ export async function POST(
     const serviceDescription = `Transportation service - ${booking.pickupLocation} to ${booking.dropLocation}`;
 
     const invoice = await prisma.$transaction(async (tx) => {
-      const lastInvoice = await tx.invoice.findFirst({
-        orderBy: { createdAt: "desc" },
-        select: { invoiceNumber: true },
-      });
-      let seq = 1500;
-      if (lastInvoice) {
-        const parts = lastInvoice.invoiceNumber.split("-");
-        const lastNum = parseInt(parts[parts.length - 1], 10);
-        if (!isNaN(lastNum)) seq = Math.max(1500, lastNum + 1);
-      }
-      const invoiceNumber = `INV-${seq}`;
+      const invoiceNumber = invoiceNumberForBooking(booking.bookingId);
 
       const paidResult = await tx.payment.aggregate({
         where: { bookingId: booking.id },

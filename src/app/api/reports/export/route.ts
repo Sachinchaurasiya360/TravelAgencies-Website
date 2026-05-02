@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { type, filters } = body as {
+    const { type, filters, columns } = body as {
       type: "bookings" | "payments";
       filters?: {
         status?: string;
@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
         toDate?: string;
         search?: string;
       };
+      columns?: string[];
     };
 
     if (!type || !["bookings", "payments"].includes(type)) {
@@ -42,9 +43,11 @@ export async function POST(request: NextRequest) {
         };
       }
       if (filters?.toDate) {
+        const toDate = new Date(filters.toDate);
+        toDate.setHours(23, 59, 59, 999);
         where.travelDate = {
           ...(where.travelDate as Prisma.DateTimeFilter || {}),
-          lte: new Date(filters.toDate),
+          lte: toDate,
         };
       }
       if (filters?.search) {
@@ -60,31 +63,73 @@ export async function POST(request: NextRequest) {
       const bookings = await prisma.booking.findMany({
         where,
         include: {
-          customer: { select: { name: true, phone: true } },
+          customer: { select: { name: true, phone: true, email: true } },
+          driver: { select: { name: true } },
+          vendor: { select: { name: true } },
         },
         orderBy: { createdAt: "desc" },
       });
 
+      const formatDate = (value: Date | null) => value ? value.toLocaleDateString("en-IN") : "";
+      const formatDateTime = (value: Date | null) => value ? value.toLocaleString("en-IN") : "";
       const data = bookings.map((b) => ({
         bookingId: b.bookingId,
         customerName: b.customer.name,
         customerPhone: b.customer.phone,
+        customerEmail: b.customer.email || "",
         pickupLocation: b.pickupLocation,
+        pickupAddress: b.pickupAddress || "",
         dropLocation: b.dropLocation,
-        travelDate: b.travelDate.toLocaleDateString("en-IN"),
+        dropAddress: b.dropAddress || "",
+        travelDate: formatDate(b.travelDate),
+        returnDate: formatDate(b.returnDate),
+        pickupTime: b.pickupTime || "",
+        vehiclePreference: b.vehiclePreference || "",
+        carSource: b.carSource,
+        driverName: b.driver?.name || "",
+        vendorName: b.vendor?.name || "",
         status: b.status,
         baseFare: b.baseFare ? Number(b.baseFare) : 0,
+        tollCharges: b.tollCharges ? Number(b.tollCharges) : 0,
+        parkingCharges: b.parkingCharges ? Number(b.parkingCharges) : 0,
+        driverAllowance: b.driverAllowance ? Number(b.driverAllowance) : 0,
+        extraCharges: b.extraCharges ? Number(b.extraCharges) : 0,
+        discount: b.discount ? Number(b.discount) : 0,
         totalAmount: b.totalAmount ? Number(b.totalAmount) : 0,
+        advanceAmount: b.advanceAmount ? Number(b.advanceAmount) : 0,
         paymentStatus: b.paymentStatus,
+        specialRequests: b.specialRequests || "",
+        adminRemarks: b.adminRemarks || "",
+        createdAt: formatDateTime(b.createdAt),
       }));
 
-      const buffer = await generateExcel(data, bookingsExportColumns(), "Bookings");
+      const allColumns = bookingsExportColumns();
+      const selectedKeys = new Set(columns?.length ? columns : allColumns.map((col) => col.key));
+      const exportColumns = allColumns.filter((col) => selectedKeys.has(col.key));
+      if (exportColumns.length === 0) return errorResponse("Select at least one column", 400);
+
+      const selectedData = data.map((row: Record<string, unknown>) =>
+        Object.fromEntries(exportColumns.map((col) => [col.key, row[col.key]]))
+      );
+
+      const settings = await prisma.settings.findUnique({ where: { id: "app_settings" } });
+      const period = filters?.fromDate || filters?.toDate
+        ? `${filters?.fromDate || "Start"} to ${filters?.toDate || "Today"}`
+        : "All Dates";
+
+      const buffer = await generateExcel(selectedData, exportColumns, "Bookings", {
+        title: "Bookings Export",
+        period,
+        generatedAt: new Date(),
+        companyName: settings?.companyName || undefined,
+        companyPhone: settings?.companyPhone ? `Mob No ${settings.companyPhone}` : undefined,
+      });
 
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type":
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="${type}-export-${Date.now()}.xlsx"`,
+          "Content-Disposition": `attachment; filename="bookings-${period.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "all-dates"}.xlsx"`,
         },
       });
     }

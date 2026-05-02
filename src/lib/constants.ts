@@ -42,13 +42,15 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 
 export const EXPENSE_CATEGORIES = [
-  "DRIVER_SALARY", "FUEL", "CAR_MAINTENANCE", "INSURANCE", "OFFICE", "OTHER",
+  "DRIVER_SALARY", "FUEL", "CNG", "CAR_MAINTENANCE", "DRIVER_FOOD", "INSURANCE", "OFFICE", "OTHER",
 ] as const;
 
 export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
   DRIVER_SALARY: "Driver Salary",
   FUEL: "Fuel",
+  CNG: "CNG",
   CAR_MAINTENANCE: "Car Maintenance",
+  DRIVER_FOOD: "Driver Food",
   INSURANCE: "Insurance",
   OFFICE: "Office",
   OTHER: "Other",

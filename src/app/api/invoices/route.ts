@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma, InvoiceStatus, ActivityAction } from "@prisma/client";
 import { createInvoiceSchema } from "@/validators/invoice.validator";
 import { amountToWords } from "@/lib/helpers/currency";
+import { invoiceNumberForBooking } from "@/lib/helpers/booking-id";
 import {
   successResponse,
   errorResponse,
@@ -121,6 +122,14 @@ export async function POST(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
     if (existingInvoice) {
+      const invoiceNumber = invoiceNumberForBooking(booking.bookingId);
+      const conflictingInvoice = await prisma.invoice.findFirst({
+        where: {
+          invoiceNumber,
+          id: { not: existingInvoice.id },
+        },
+        select: { id: true },
+      });
       const subtotalExisting = Number(booking.baseFare);
       const tollExisting = Number(booking.tollCharges || 0);
       const parkingExisting = Number(booking.parkingCharges || 0);
@@ -143,6 +152,7 @@ export async function POST(request: NextRequest) {
         where: { id: existingInvoice.id },
         data: {
           customerName: booking.customer.name,
+          ...(conflictingInvoice ? {} : { invoiceNumber }),
           customerAddress: [booking.customer.address, booking.customer.city, booking.customer.state, booking.customer.pincode]
             .filter(Boolean).join(", ") || null,
           customerPhone: booking.customer.phone,
@@ -194,20 +204,8 @@ export async function POST(request: NextRequest) {
     const serviceDescription = data.serviceDescription ||
       `Transportation service - ${booking.pickupLocation} to ${booking.dropLocation}`;
 
-    // Wrap invoice number generation + creation in a transaction
     const invoice = await prisma.$transaction(async (tx) => {
-      // Generate invoice number atomically
-      const lastInvoice = await tx.invoice.findFirst({
-        orderBy: { createdAt: "desc" },
-        select: { invoiceNumber: true },
-      });
-      let seq = 1500;
-      if (lastInvoice) {
-        const parts = lastInvoice.invoiceNumber.split("-");
-        const lastNum = parseInt(parts[parts.length - 1], 10);
-        if (!isNaN(lastNum)) seq = Math.max(1500, lastNum + 1);
-      }
-      const invoiceNumber = `INV-${seq}`;
+      const invoiceNumber = invoiceNumberForBooking(booking.bookingId);
 
       // Get amount already paid
       const paidResult = await tx.payment.aggregate({

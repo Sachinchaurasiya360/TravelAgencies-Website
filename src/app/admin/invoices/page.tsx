@@ -19,6 +19,7 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { formatDate } from "@/lib/helpers/date";
+import { downloadInvoicePdf } from "@/lib/helpers/download-pdf";
 import { useT } from "@/lib/i18n/language-context";
 import { interpolate } from "@/lib/i18n";
 import { getStatusLabel } from "@/lib/i18n/label-maps";
@@ -91,61 +92,7 @@ export default function InvoicesPage() {
 
   async function handleDownloadPdf(invoiceId: string, invoiceNumber: string) {
     try {
-      const res = await fetch(`/api/invoices/${invoiceId}/pdf`);
-      if (!res.ok) throw new Error("Failed to generate PDF");
-      const html = await res.text();
-
-      // Render HTML in a hidden iframe
-      const iframe = document.createElement("iframe");
-      iframe.style.position = "fixed";
-      iframe.style.left = "-9999px";
-      iframe.style.width = "794px"; // A4 width at 96dpi
-      iframe.style.height = "1123px"; // A4 height
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc) throw new Error("Failed to create iframe");
-
-      // Write HTML without the auto-print script
-      iframeDoc.open();
-      iframeDoc.write(html.replace(/<script>.*?<\/script>/g, ""));
-      iframeDoc.close();
-
-      // Wait for content to render
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      const { default: html2canvas } = await import("html2canvas-pro");
-      const { jsPDF } = await import("jspdf");
-
-      const canvas = await html2canvas(iframeDoc.body, {
-        scale: 2,
-        useCORS: true,
-        width: 794,
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      // Handle multi-page if content is longer than one page
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      let position = 0;
-
-      if (pdfHeight <= pageHeight) {
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      } else {
-        while (position < pdfHeight) {
-          pdf.addImage(imgData, "PNG", 0, -position, pdfWidth, pdfHeight);
-          position += pageHeight;
-          if (position < pdfHeight) {
-            pdf.addPage();
-          }
-        }
-      }
-
-      pdf.save(`${invoiceNumber}.pdf`);
-      document.body.removeChild(iframe);
+      await downloadInvoicePdf(invoiceId, invoiceNumber);
     } catch (err) {
       console.error("PDF generation error:", err);
       toast.error(t.invoices.pdfFailed);

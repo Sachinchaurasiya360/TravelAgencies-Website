@@ -84,7 +84,9 @@ enum NotificationType {
 enum ExpenseCategory {
   DRIVER_SALARY
   FUEL
+  CNG
   CAR_MAINTENANCE
+  DRIVER_FOOD
   INSURANCE
   OFFICE
   OTHER
@@ -567,6 +569,7 @@ model Expense {
   description String
   amount      Decimal         @db.Decimal(12, 0)
   expenseDate DateTime        @default(now())
+  vehicleNumber String?
   notes       String?
 
   createdById String
@@ -603,4 +606,3 @@ model Vendor {
   @@index([phone])
   @@map("vendors")
 }
-

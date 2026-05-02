@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { ActivityAction } from "@prisma/client";
+import { ActivityAction, Prisma } from "@prisma/client";
 import { updateExpenseSchema } from "@/validators/expense.validator";
 import { successResponse, errorResponse, requireAdmin } from "@/lib/api-helpers";
 import { logActivity } from "@/services/activity-log.service";
@@ -51,12 +51,13 @@ export async function PATCH(
       return errorResponse(parsed.error.issues[0].message, 400);
     }
 
+    const data: Prisma.ExpenseUpdateInput = { ...parsed.data };
+    if ("vehicleNumber" in data) data.vehicleNumber = data.vehicleNumber || null;
+    if ("notes" in data) data.notes = data.notes || undefined;
+
     const expense = await prisma.expense.update({
       where: { id },
-      data: {
-        ...parsed.data,
-        notes: parsed.data.notes ?? undefined,
-      },
+      data,
     });
 
     logActivity({

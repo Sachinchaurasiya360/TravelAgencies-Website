@@ -50,6 +50,10 @@ export async function generateInvoiceNumber(tx?: TxClient): Promise<string> {
   return `INV-${sequence}`;
 }
 
+export function invoiceNumberForBooking(bookingId: string): string {
+  return `INV-${bookingId.replace(/^INV-/i, "")}`;
+}
+
 /** Generate a receipt number. Should be called inside a transaction. */
 export async function generateReceiptNumber(tx?: TxClient): Promise<string> {
   const db = tx || prisma;

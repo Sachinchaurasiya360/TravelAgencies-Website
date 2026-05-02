@@ -36,7 +36,9 @@ export function getExpenseCategoryLabel(t: Translations, cat: string): string {
   const map: Record<string, string> = {
     DRIVER_SALARY: t.expenseCategories.driverSalary,
     FUEL: t.expenseCategories.fuel,
+    CNG: t.expenseCategories.cng,
     CAR_MAINTENANCE: t.expenseCategories.carMaintenance,
+    DRIVER_FOOD: t.expenseCategories.driverFood,
     INSURANCE: t.expenseCategories.insurance,
     OFFICE: t.expenseCategories.office,
     OTHER: t.expenseCategories.other,

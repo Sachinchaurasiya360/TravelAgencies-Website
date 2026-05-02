@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.OR = [
         { description: { contains: search, mode: "insensitive" } },
+        { vehicleNumber: { contains: search, mode: "insensitive" } },
         { notes: { contains: search, mode: "insensitive" } },
       ];
     }
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
         description: data.description,
         amount: data.amount,
         expenseDate: data.expenseDate || new Date(),
+        vehicleNumber: data.vehicleNumber || null,
         notes: data.notes || null,
         createdById: session.user.id,
       },

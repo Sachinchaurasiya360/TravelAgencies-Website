@@ -1,0 +1,4 @@
+ALTER TYPE "ExpenseCategory" ADD VALUE IF NOT EXISTS 'CNG';
+ALTER TYPE "ExpenseCategory" ADD VALUE IF NOT EXISTS 'DRIVER_FOOD';
+
+ALTER TABLE "expenses" ADD COLUMN "vehicleNumber" TEXT;
