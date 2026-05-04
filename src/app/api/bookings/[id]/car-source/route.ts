@@ -30,7 +30,7 @@ export async function PATCH(
 
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { id: true, bookingId: true, customer: { select: { name: true } } },
+      select: { id: true, bookingId: true, driverId: true, customer: { select: { name: true } } },
     });
     if (!booking) return errorResponse("Booking not found", 404);
 
@@ -45,6 +45,13 @@ export async function PATCH(
       });
       if (!vendor) return errorResponse("Vendor not found", 404);
       if (!vendor.isActive) return errorResponse("Vendor is inactive", 400);
+      const currentDriverBelongsToVendor = booking.driverId
+        ? await prisma.user.findFirst({
+            where: { id: booking.driverId, role: "DRIVER", vendorId },
+            select: { id: true, vehicleName: true, vehicleNumber: true },
+          })
+        : null;
+      const retainedDriverId = booking.driverId && currentDriverBelongsToVendor ? booking.driverId : null;
 
       await prisma.booking.update({
         where: { id },
@@ -52,6 +59,7 @@ export async function PATCH(
           carSource: "VENDOR_CAR",
           vendorId,
           vendorCost: vendorCost ?? null,
+          driverId: retainedDriverId,
         },
       });
 
@@ -60,10 +68,16 @@ export async function PATCH(
         where: { bookingId: id },
         create: {
           bookingId: id,
+          driverId: retainedDriverId,
           guestName: booking.customer?.name || "Guest",
+          vehicleName: currentDriverBelongsToVendor?.vehicleName || null,
+          vehicleNumber: currentDriverBelongsToVendor?.vehicleNumber || null,
         },
         update: {
+          driverId: retainedDriverId,
           guestName: booking.customer?.name || "Guest",
+          vehicleName: currentDriverBelongsToVendor?.vehicleName || null,
+          vehicleNumber: currentDriverBelongsToVendor?.vehicleNumber || null,
         },
       });
 

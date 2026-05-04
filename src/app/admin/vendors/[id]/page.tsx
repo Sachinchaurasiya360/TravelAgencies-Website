@@ -5,13 +5,16 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatCurrency } from "@/lib/helpers/currency";
 import { useT } from "@/lib/i18n/language-context";
-import { ArrowLeft, Truck, IndianRupee, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Truck, IndianRupee, MapPin, ChevronLeft, ChevronRight, Plus, UserCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +30,17 @@ interface VendorInfo {
   rateInfo: string | null;
   notes: string | null;
   isActive: boolean;
+  drivers: VendorDriver[];
+}
+
+interface VendorDriver {
+  id: string;
+  name: string;
+  phone: string | null;
+  vehicleName: string | null;
+  vehicleNumber: string | null;
+  isActive: boolean;
+  _count: { driverBookings: number };
 }
 
 interface VendorBooking {
@@ -54,6 +68,12 @@ export default function VendorDetailPage() {
   const [data, setData] = useState<BookingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [driverDialogOpen, setDriverDialogOpen] = useState(false);
+  const [driverName, setDriverName] = useState("");
+  const [driverPhone, setDriverPhone] = useState("");
+  const [driverVehicleName, setDriverVehicleName] = useState("");
+  const [driverVehicleNumber, setDriverVehicleNumber] = useState("");
+  const [driverSaving, setDriverSaving] = useState(false);
 
   const fetchData = useCallback(async (p: number) => {
     setLoading(true);
@@ -77,6 +97,50 @@ export default function VendorDetailPage() {
   useEffect(() => {
     fetchData(page);
   }, [page, fetchData]);
+
+  function openDriverDialog() {
+    setDriverName("");
+    setDriverPhone("");
+    setDriverVehicleName("");
+    setDriverVehicleNumber("");
+    setDriverDialogOpen(true);
+  }
+
+  async function handleCreateDriver() {
+    if (!driverName.trim() || !driverPhone.trim()) {
+      toast.error(t.drivers.namePhoneRequired);
+      return;
+    }
+
+    setDriverSaving(true);
+    try {
+      const payload: Record<string, string> = {
+        name: driverName.trim(),
+        phone: driverPhone.trim(),
+        vendorId: id,
+      };
+      if (driverVehicleName.trim()) payload.vehicleName = driverVehicleName.trim();
+      if (driverVehicleNumber.trim()) payload.vehicleNumber = driverVehicleNumber.trim();
+
+      const res = await fetch("/api/drivers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(t.drivers.driverAdded);
+        setDriverDialogOpen(false);
+        fetchData(page);
+      } else {
+        toast.error(result.error || t.drivers.saveFailed);
+      }
+    } catch {
+      toast.error(t.drivers.saveFailed);
+    } finally {
+      setDriverSaving(false);
+    }
+  }
 
   if (loading && !vendor) return <LoadingSpinner />;
   if (!vendor) return <div className="p-8 text-center text-muted-foreground">{t.vendorDetail.fetchFailed}</div>;
@@ -165,6 +229,62 @@ export default function VendorDetailPage() {
           </Card>
         </div>
       )}
+
+      {/* Vendor Drivers */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between text-lg">
+            <span className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-blue-500" />
+              Vendor Drivers
+            </span>
+            <Button size="sm" onClick={openDriverDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Driver
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {vendor.drivers.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No drivers linked to this vendor yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-muted-foreground border-b text-left">
+                    <th className="p-3 font-medium">Name</th>
+                    <th className="p-3 font-medium">Phone</th>
+                    <th className="p-3 font-medium">Vehicle</th>
+                    <th className="p-3 font-medium">Bookings</th>
+                    <th className="p-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vendor.drivers.map((driver) => (
+                    <tr key={driver.id} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="p-3">
+                        <Link href={`/admin/drivers/${driver.id}`} className="font-medium text-blue-600 hover:underline">
+                          {driver.name}
+                        </Link>
+                      </td>
+                      <td className="p-3">{driver.phone || "-"}</td>
+                      <td className="p-3 text-muted-foreground">
+                        {[driver.vehicleName, driver.vehicleNumber].filter(Boolean).join(" | ") || "-"}
+                      </td>
+                      <td className="p-3">{driver._count.driverBookings}</td>
+                      <td className="p-3">
+                        <StatusBadge status={driver.isActive ? "ACTIVE" : "INACTIVE"} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Bookings Table */}
       <Card>
@@ -274,6 +394,57 @@ export default function VendorDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={driverDialogOpen}
+        onOpenChange={setDriverDialogOpen}
+        title="Add vendor driver"
+        description={`Create a driver linked to ${vendor.name}.`}
+        confirmLabel={driverSaving ? t.common.saving : "Add Driver"}
+        onConfirm={handleCreateDriver}
+        loading={driverSaving}
+      >
+        <div className="space-y-4 py-2">
+          <div>
+            <Label>{t.drivers.nameRequired}</Label>
+            <Input
+              placeholder={t.drivers.namePlaceholder}
+              value={driverName}
+              onChange={(e) => setDriverName(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label>{t.drivers.phoneRequired}</Label>
+            <Input
+              placeholder={t.drivers.phonePlaceholder}
+              value={driverPhone}
+              onChange={(e) => setDriverPhone(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>{t.drivers.vehicleName}</Label>
+              <Input
+                placeholder={t.drivers.vehicleNamePlaceholder}
+                value={driverVehicleName}
+                onChange={(e) => setDriverVehicleName(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>{t.drivers.vehicleNumber}</Label>
+              <Input
+                placeholder={t.drivers.vehicleNumberPlaceholder}
+                value={driverVehicleNumber}
+                onChange={(e) => setDriverVehicleNumber(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+        </div>
+      </ConfirmDialog>
     </div>
   );
 }

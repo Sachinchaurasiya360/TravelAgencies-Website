@@ -22,7 +22,22 @@ export async function GET(
   try {
     const vendor = await prisma.vendor.findUnique({
       where: { id },
-      include: { _count: { select: { bookings: true } } },
+      include: {
+        drivers: {
+          where: { role: "DRIVER" },
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            vehicleName: true,
+            vehicleNumber: true,
+            isActive: true,
+            _count: { select: { driverBookings: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        _count: { select: { bookings: true, drivers: true } },
+      },
     });
     if (!vendor) return errorResponse("Vendor not found", 404);
     return successResponse(vendor);

@@ -22,6 +22,8 @@ export async function GET(
         phone: true,
         vehicleName: true,
         vehicleNumber: true,
+        vendorId: true,
+        vendor: { select: { id: true, name: true, phone: true } },
         isActive: true,
         createdAt: true,
         _count: { select: { driverBookings: true } },
@@ -54,6 +56,14 @@ export async function PATCH(
 
     const driver = await prisma.user.findUnique({ where: { id, role: "DRIVER" } });
     if (!driver) return errorResponse("Driver not found", 404);
+    if (parsed.data.vendorId) {
+      const vendor = await prisma.vendor.findUnique({
+        where: { id: parsed.data.vendorId },
+        select: { id: true, isActive: true },
+      });
+      if (!vendor) return errorResponse("Vendor not found", 404);
+      if (!vendor.isActive) return errorResponse("Vendor is inactive", 400);
+    }
 
     const data: Record<string, unknown> = {};
     if (parsed.data.name !== undefined) data.name = parsed.data.name;
@@ -61,6 +71,7 @@ export async function PATCH(
     if (parsed.data.isActive !== undefined) data.isActive = parsed.data.isActive;
     if (parsed.data.vehicleName !== undefined) data.vehicleName = parsed.data.vehicleName;
     if (parsed.data.vehicleNumber !== undefined) data.vehicleNumber = parsed.data.vehicleNumber;
+    if (parsed.data.vendorId !== undefined) data.vendorId = parsed.data.vendorId || null;
 
     const updated = await prisma.user.update({
       where: { id },
@@ -71,6 +82,8 @@ export async function PATCH(
         phone: true,
         vehicleName: true,
         vehicleNumber: true,
+        vendorId: true,
+        vendor: { select: { id: true, name: true, phone: true } },
         isActive: true,
         createdAt: true,
       },

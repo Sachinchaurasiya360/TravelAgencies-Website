@@ -16,10 +16,12 @@ export async function GET(request: NextRequest) {
     const { page, limit, skip, sortBy, sortOrder } = getPaginationParams(searchParams);
     const search = searchParams.get("search");
     const isActive = searchParams.get("isActive");
+    const vendorId = searchParams.get("vendorId");
 
     const where: Prisma.UserWhereInput = { role: "DRIVER" };
     if (isActive === "true") where.isActive = true;
     if (isActive === "false") where.isActive = false;
+    if (vendorId) where.vendorId = vendorId;
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -39,6 +41,8 @@ export async function GET(request: NextRequest) {
           phone: true,
           vehicleName: true,
           vehicleNumber: true,
+          vendorId: true,
+          vendor: { select: { id: true, name: true, phone: true } },
           isActive: true,
           createdAt: true,
           _count: { select: { driverBookings: true } },
@@ -70,6 +74,14 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanPhone = parsed.data.phone.replace(/^\+91/, "");
+    if (parsed.data.vendorId) {
+      const vendor = await prisma.vendor.findUnique({
+        where: { id: parsed.data.vendorId },
+        select: { id: true, isActive: true },
+      });
+      if (!vendor) return errorResponse("Vendor not found", 404);
+      if (!vendor.isActive) return errorResponse("Vendor is inactive", 400);
+    }
 
     // Auto-generate placeholder email and password (drivers use token-based access, not login)
     const autoEmail = `driver-${randomUUID().slice(0, 8)}@placeholder.local`;
@@ -84,6 +96,7 @@ export async function POST(request: NextRequest) {
         role: "DRIVER",
         vehicleName: parsed.data.vehicleName || null,
         vehicleNumber: parsed.data.vehicleNumber || null,
+        vendorId: parsed.data.vendorId || null,
       },
       select: {
         id: true,
@@ -91,6 +104,8 @@ export async function POST(request: NextRequest) {
         phone: true,
         vehicleName: true,
         vehicleNumber: true,
+        vendorId: true,
+        vendor: { select: { id: true, name: true, phone: true } },
         isActive: true,
         createdAt: true,
       },

@@ -76,10 +76,14 @@ export async function POST(request: NextRequest) {
       return errorResponse("Valid channel (EMAIL, WHATSAPP) is required", 400);
     }
 
-    // Fetch booking with customer
+    // Fetch booking with customer and assigned party details
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { customer: true },
+      include: {
+        customer: true,
+        driver: { select: { name: true, phone: true, vehicleName: true, vehicleNumber: true } },
+        vendor: { select: { name: true, phone: true } },
+      },
     });
 
     if (!booking) return errorResponse("Booking not found", 404);
@@ -96,6 +100,8 @@ export async function POST(request: NextRequest) {
           phone: booking.customer.phone,
           email: booking.customer.email,
         },
+        driver: booking.driver,
+        vendor: booking.vendor,
       },
       [channel as NotificationChannel],
       message || undefined

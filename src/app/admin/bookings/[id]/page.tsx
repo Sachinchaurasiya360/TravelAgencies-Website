@@ -79,7 +79,7 @@ interface BookingDetail {
   cancellationReason: string | null;
   createdAt: string;
   customer: { id: string; name: string; phone: string; email: string | null };
-  driver: { id: string; name: string; phone: string; vehicleName?: string | null; vehicleNumber?: string | null } | null;
+  driver: { id: string; name: string; phone: string; vehicleName?: string | null; vehicleNumber?: string | null; vendorId?: string | null } | null;
   driverAccessToken: string | null;
   carSource: "OWN_CAR" | "VENDOR_CAR";
   vendorId: string | null;
@@ -122,6 +122,9 @@ interface DriverOption {
   id: string;
   name: string;
   phone: string;
+  vendorId?: string | null;
+  vehicleName?: string | null;
+  vehicleNumber?: string | null;
 }
 
 export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -284,9 +287,11 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
-  async function fetchDrivers() {
+  async function fetchDrivers(vendorId?: string) {
     try {
-      const res = await fetch("/api/drivers?isActive=true&limit=100");
+      const params = new URLSearchParams({ isActive: "true", limit: "100" });
+      if (vendorId) params.set("vendorId", vendorId);
+      const res = await fetch(`/api/drivers?${params}`);
       const result = await res.json();
       if (result.success) {
         setDrivers(result.data.drivers || []);
@@ -311,11 +316,24 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     async function loadData() {
       setLoading(true);
-      await Promise.all([fetchBooking(), fetchDrivers(), fetchVendors()]);
+      await Promise.all([fetchBooking(), fetchVendors()]);
       setLoading(false);
     }
     loadData();
   }, [id]);
+
+  useEffect(() => {
+    if (carSource === "VENDOR_CAR") {
+      if (selectedVendorId) {
+        fetchDrivers(selectedVendorId);
+      } else {
+        setDrivers([]);
+      }
+      setSelectedDriverId("");
+    } else {
+      fetchDrivers();
+    }
+  }, [carSource, selectedVendorId]);
 
   function buildConfirmationMessage() {
     if (!booking) return "";
@@ -347,6 +365,14 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     if (total > 0) msg += `\nTotal Fare - ${total.toFixed(0)}`;
 
     msg += `\n\nDrop Address - ${booking.dropLocation}`;
+    if (booking.driver) {
+      msg += `\n\nDriver Details - ${booking.driver.name}`;
+      if (booking.driver.phone) msg += ` (${booking.driver.phone})`;
+    }
+    if (booking.vendor) {
+      msg += `\nVendor - ${booking.vendor.name}`;
+      if (booking.vendor.phone) msg += ` (${booking.vendor.phone})`;
+    }
     msg += `\n\nBooking & Office Contact No: 7498125466 , 9527806257.`;
     msg += `\nOffice Locations- https://maps.app.goo.gl/FXW3xSEyYHFGczPs7?g_st=com.google.maps.preview.copy`;
 
@@ -594,6 +620,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       if (result.success) {
         toast.success(t.bookingDetail.vendorAssigned);
         await fetchBooking();
+        await fetchDrivers(selectedVendorId);
       } else {
         toast.error(result.error || t.bookingDetail.vendorAssignFailed);
       }
@@ -981,14 +1008,20 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               </div>
             )}
 
-            {/* Driver assignment (OWN_CAR only) */}
-            {carSource === "OWN_CAR" && <div>
+            {/* Driver assignment */}
+            <div>
+              {carSource === "VENDOR_CAR" && !selectedVendorId && (
+                <p className="pb-3 text-sm text-muted-foreground">Select a vendor first to see linked drivers.</p>
+              )}
               {booking.driver ? (
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <UserCheck className="h-4 w-4 text-blue-500" />
                     <span className="font-medium">{booking.driver.name}</span>
                     <span className="text-muted-foreground">({booking.driver.phone})</span>
+                    {carSource === "VENDOR_CAR" && booking.vendor && (
+                      <span className="text-muted-foreground">- {booking.vendor.name}</span>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -1014,11 +1047,14 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 </div>
               ) : !showDriverSelect ? (
                 <div className="text-muted-foreground py-4 text-center text-sm">
-                  {t.bookingDetail.noDriverAssigned}
+                  {carSource === "VENDOR_CAR" && booking.vendor
+                    ? `No driver assigned for ${booking.vendor.name}.`
+                    : t.bookingDetail.noDriverAssigned}
                   <Button
                     variant="link"
                     size="sm"
                     onClick={() => setShowDriverSelect(true)}
+                    disabled={carSource === "VENDOR_CAR" && !selectedVendorId}
                   >
                     {t.bookingDetail.assignDriver}
                   </Button>
@@ -1033,12 +1069,12 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                     <SelectContent>
                       {drivers.length === 0 ? (
                         <SelectItem value="_none" disabled>
-                          {t.bookingDetail.noDriversAvailable}
+                          {carSource === "VENDOR_CAR" ? "No drivers linked to this vendor" : t.bookingDetail.noDriversAvailable}
                         </SelectItem>
                       ) : (
                         drivers.map((d) => (
                           <SelectItem key={d.id} value={d.id}>
-                            {d.name} ({d.phone})
+                            {d.name} ({d.phone}){d.vehicleNumber ? ` - ${d.vehicleNumber}` : ""}
                           </SelectItem>
                         ))
                       )}
@@ -1062,7 +1098,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                   </div>
                 </div>
               )}
-            </div>}
+            </div>
           </CardContent>
         </Card>
 

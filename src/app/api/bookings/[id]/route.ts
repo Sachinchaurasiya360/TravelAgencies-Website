@@ -19,7 +19,7 @@ export async function GET(
       where: { id },
       include: {
         customer: true,
-        driver: { select: { id: true, name: true, phone: true, vehicleName: true, vehicleNumber: true } },
+        driver: { select: { id: true, name: true, phone: true, vehicleName: true, vehicleNumber: true, vendorId: true } },
         dutySlip: true,
         vendor: { select: { id: true, name: true, phone: true } },
         invoices: {

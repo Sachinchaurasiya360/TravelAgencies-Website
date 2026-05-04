@@ -68,6 +68,7 @@ export async function PATCH(
       include: {
         customer: { select: { name: true, phone: true, email: true } },
         driver: { select: { name: true, phone: true, vehicleNumber: true, vehicleName: true } },
+        vendor: { select: { name: true, phone: true } },
       },
     });
 
@@ -115,6 +116,7 @@ export async function PATCH(
         travelDate: updated.travelDate,
         pickupTime: updated.pickupTime,
         driver: updated.driver,
+        vendor: updated.vendor,
       },
       newStatus
     ).catch(() => [] as { channel: string; whatsappUrl?: string }[]);

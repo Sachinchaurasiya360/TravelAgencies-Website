@@ -25,7 +25,14 @@ export async function PATCH(
 
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { id: true, bookingId: true, driverAccessToken: true, customer: { select: { name: true } } },
+      select: {
+        id: true,
+        bookingId: true,
+        driverAccessToken: true,
+        carSource: true,
+        vendorId: true,
+        customer: { select: { name: true } },
+      },
     });
     if (!booking) return errorResponse("Booking not found", 404);
 
@@ -35,10 +42,16 @@ export async function PATCH(
     if (driverId) {
       driver = await prisma.user.findUnique({
         where: { id: driverId, role: "DRIVER" },
-        select: { id: true, name: true, phone: true, isActive: true, vehicleName: true, vehicleNumber: true },
+        select: { id: true, name: true, phone: true, isActive: true, vehicleName: true, vehicleNumber: true, vendorId: true },
       });
       if (!driver) return errorResponse("Driver not found", 404);
       if (!driver.isActive) return errorResponse("Driver is inactive", 400);
+      if (booking.carSource === "VENDOR_CAR" && !booking.vendorId) {
+        return errorResponse("Select a vendor before assigning a vendor driver", 400);
+      }
+      if (booking.carSource === "VENDOR_CAR" && booking.vendorId && driver.vendorId !== booking.vendorId) {
+        return errorResponse("Driver is not linked to the selected vendor", 400);
+      }
     }
 
     await prisma.booking.update({

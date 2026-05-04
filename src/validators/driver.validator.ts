@@ -9,6 +9,7 @@ export const createDriverUserSchema = z.object({
     .regex(/^(\+91)?[6-9]\d{9}$/, "Must be a valid Indian mobile number"),
   vehicleName: z.string().max(100).trim().optional(),
   vehicleNumber: z.string().max(20).trim().optional(),
+  vendorId: z.string().min(1).optional().nullable(),
 });
 
 export const updateDriverUserSchema = z.object({
@@ -22,6 +23,7 @@ export const updateDriverUserSchema = z.object({
   isActive: z.boolean().optional(),
   vehicleName: z.string().max(100).trim().optional(),
   vehicleNumber: z.string().max(20).trim().optional(),
+  vendorId: z.string().min(1).optional().nullable(),
 });
 
 export const assignDriverSchema = z.object({

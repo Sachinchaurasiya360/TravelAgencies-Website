@@ -73,6 +73,10 @@ export function statusUpdateWhatsApp(
     vehicleNumber?: string | null;
     vehicleName?: string | null;
   } | null,
+  vendor?: {
+    name: string;
+    phone: string | null;
+  } | null,
   bookingDetails?: {
     customerName?: string;
     companyName?: string;
@@ -112,6 +116,14 @@ export function statusUpdateWhatsApp(
     }
 
     msg += `\n\nDrop Address - ${to}`;
+    if (driver) {
+      msg += `\n\nDriver Details - ${driver.name}`;
+      if (driver.phone) msg += ` (${driver.phone})`;
+    }
+    if (vendor) {
+      msg += `\nVendor - ${vendor.name}`;
+      if (vendor.phone) msg += ` (${vendor.phone})`;
+    }
     msg += `\n\nBooking & Office Contact No: 7498125466 , 9527806257.`;
     msg += `\nOffice Locations- https://maps.app.goo.gl/FXW3xSEyYHFGczPs7?g_st=com.google.maps.preview.copy`;
 
@@ -143,6 +155,10 @@ ${message}`;
     text += `\n\n*Driver Details:*\nName: ${driver.name}`;
     if (driver.phone) text += `\nContact: ${driver.phone}`;
   }
+  if (vendor) {
+    text += `\n\n*Vendor Details:*\nName: ${vendor.name}`;
+    if (vendor.phone) text += `\nContact: ${vendor.phone}`;
+  }
 
   text += `\n\nTrack your booking:\n${appUrl}/track`;
   text += `\n\nWarm regards,\n*${company}*`;
@@ -152,13 +168,26 @@ ${message}`;
 export function paymentReminderWhatsApp(
   bookingId: string,
   amount: string,
-  dueDate?: string
+  dueDate?: string,
+  driver?: {
+    name: string;
+    phone: string | null;
+    vehicleNumber?: string | null;
+    vehicleName?: string | null;
+  } | null,
+  vendor?: {
+    name: string;
+    phone: string | null;
+  } | null
 ): string {
+  const vehicle = [driver?.vehicleName, driver?.vehicleNumber].filter(Boolean).join(" ");
   return `Payment Reminder
 
 *Booking:* ${bookingId}
 *Amount Due:* ${amount}
 ${dueDate ? `*Due Date:* ${dueDate}` : ""}
+${driver ? `\n*Driver:* ${driver.name}${driver.phone ? ` (${driver.phone})` : ""}${vehicle ? `\n*Vehicle:* ${vehicle}` : ""}` : ""}
+${vendor ? `\n*Vendor:* ${vendor.name}${vendor.phone ? ` (${vendor.phone})` : ""}` : ""}
 
 Please make the payment at your earliest convenience.
 

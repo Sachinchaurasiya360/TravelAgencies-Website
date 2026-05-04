@@ -135,6 +135,7 @@ export async function sendStatusNotification(booking: {
   travelDate?: Date;
   pickupTime?: string | null;
   driver?: { name: string; phone: string | null; vehicleNumber?: string | null; vehicleName?: string | null } | null;
+  vendor?: { name: string; phone: string | null } | null;
 }, newStatus: string): Promise<NotificationResult[]> {
   const results: NotificationResult[] = [];
   const settings = await prisma.settings.findUnique({ where: { id: "app_settings" } });
@@ -196,7 +197,7 @@ export async function sendStatusNotification(booking: {
       travelDate: booking.travelDate?.toLocaleDateString("en-IN"),
       pickupTime: booking.pickupTime,
     };
-    const waBody = statusUpdateWhatsApp(booking.bookingId, statusLabel, message, pricing, driver, bookingDetails);
+    const waBody = statusUpdateWhatsApp(booking.bookingId, statusLabel, message, pricing, driver, booking.vendor, bookingDetails);
     const whatsappUrl = generateWhatsAppUrl(booking.customer.phone, waBody);
     results.push({ channel: "WHATSAPP", success: true, whatsappUrl });
     await logNotification({
@@ -239,6 +240,8 @@ export async function sendPaymentReminderNotification(booking: {
   totalAmount: unknown;
   paymentDueDate: Date | null;
   customer: { name: string; phone: string; email: string | null };
+  driver?: { name: string; phone: string | null; vehicleNumber?: string | null; vehicleName?: string | null } | null;
+  vendor?: { name: string; phone: string | null } | null;
 }, channels: NotificationChannel[], customMessage?: string): Promise<NotificationResult[]> {
   const results: NotificationResult[] = [];
   const amount = formatCurrency(booking.totalAmount as string);
@@ -272,7 +275,7 @@ export async function sendPaymentReminderNotification(booking: {
     }
 
     if (channel === "WHATSAPP") {
-      const waBody = customMessage || paymentReminderWhatsApp(booking.bookingId, amount, dueDate);
+      const waBody = customMessage || paymentReminderWhatsApp(booking.bookingId, amount, dueDate, booking.driver, booking.vendor);
       const whatsappUrl = generateWhatsAppUrl(booking.customer.phone, waBody);
       results.push({ channel: "WHATSAPP", success: true, whatsappUrl });
       await logNotification({

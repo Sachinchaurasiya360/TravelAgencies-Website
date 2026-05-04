@@ -147,6 +147,8 @@ model User {
 
   vehicleName    String?
   vehicleNumber  String?
+  vendorId       String?
+  vendor         Vendor? @relation("VendorDrivers", fields: [vendorId], references: [id], onDelete: SetNull)
 
   activityLogs   ActivityLog[]
   bookingNotes   BookingNote[]
@@ -154,6 +156,7 @@ model User {
   driverBookings Booking[]    @relation("DriverBookings")
   dutySlips      DutySlip[]   @relation("DriverDutySlips")
 
+  @@index([vendorId])
   @@map("users")
 }
 
@@ -601,6 +604,7 @@ model Vendor {
   updatedAt DateTime @updatedAt
 
   bookings Booking[]
+  drivers  User[]    @relation("VendorDrivers")
 
   @@index([name])
   @@index([phone])
