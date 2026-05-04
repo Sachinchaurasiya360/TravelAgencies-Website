@@ -127,6 +127,7 @@ enum ActivityAction {
   DRIVER_LINK_GENERATED
   DUTY_SLIP_CREATED
   DUTY_SLIP_SUBMITTED
+  BOOKING_DELETED
 }
 
 // ============================================================

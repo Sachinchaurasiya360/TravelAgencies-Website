@@ -85,3 +85,35 @@ export async function PATCH(
     return errorResponse("Failed to update booking", 500);
   }
 }
+
+// DELETE /api/bookings/[id] - Delete booking (admin)
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await requireAdmin();
+  if (!session) return errorResponse("Unauthorized", 401);
+
+  const { id } = await params;
+
+  try {
+    const booking = await prisma.booking.findUnique({ where: { id } });
+    if (!booking) return errorResponse("Booking not found", 404);
+
+    await prisma.booking.delete({ where: { id } });
+
+    logActivity({
+      action: ActivityAction.BOOKING_DELETED,
+      description: `Booking ${booking.bookingId} deleted`,
+      userId: session.user.id,
+      entityType: "Booking",
+      entityId: booking.id,
+      metadata: { bookingId: booking.bookingId },
+    }).catch(console.error);
+
+    return successResponse({ deleted: true });
+  } catch (error) {
+    console.error("Booking delete error:", error);
+    return errorResponse("Failed to delete booking", 500);
+  }
+}

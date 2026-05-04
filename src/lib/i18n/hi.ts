@@ -155,6 +155,10 @@ const hi: Translations = {
     exportDownloaded: "एक्सपोर्ट डाउनलोड हुआ",
     exportFailed: "बुकिंग एक्सपोर्ट विफल",
     fetchFailed: "बुकिंग लोड करने में विफल",
+    deleteTitle: "बुकिंग हटाएं",
+    deleteMessage: "क्या आप इस बुकिंग को हटाना चाहते हैं? यह कार्रवाई पूर्ववत नहीं की जा सकती।",
+    bookingDeleted: "बुकिंग हटाई गई",
+    deleteFailed: "बुकिंग हटाने में विफल",
   },
 
   bookingDetail: {

@@ -153,6 +153,10 @@ const en = {
     exportDownloaded: "Export downloaded",
     exportFailed: "Failed to export bookings",
     fetchFailed: "Failed to fetch bookings",
+    deleteTitle: "Delete Booking",
+    deleteMessage: "Are you sure you want to delete this booking? This action cannot be undone.",
+    bookingDeleted: "Booking deleted",
+    deleteFailed: "Failed to delete booking",
   },
 
   bookingDetail: {

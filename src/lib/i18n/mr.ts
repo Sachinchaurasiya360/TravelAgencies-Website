@@ -155,6 +155,10 @@ const mr: Translations = {
     exportDownloaded: "एक्सपोर्ट डाउनलोड झाला",
     exportFailed: "बुकिंग एक्सपोर्ट अयशस्वी",
     fetchFailed: "बुकिंग लोड करणे अयशस्वी",
+    deleteTitle: "बुकिंग हटवा",
+    deleteMessage: "तुम्हाला ही बुकिंग हटवायची आहे का? ही कृती पूर्ववत केली जाऊ शकत नाही.",
+    bookingDeleted: "बुकिंग हटवली गेली",
+    deleteFailed: "बुकिंग हटवणे अयशस्वी",
   },
 
   bookingDetail: {

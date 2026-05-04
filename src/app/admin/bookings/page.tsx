@@ -24,7 +24,8 @@ import { BOOKING_STATUSES } from "@/lib/constants";
 import { useT } from "@/lib/i18n/language-context";
 import { interpolate } from "@/lib/i18n";
 import { getStatusLabel } from "@/lib/i18n/label-maps";
-import { Search, CalendarCheck, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Search, CalendarCheck, ChevronLeft, ChevronRight, Download, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 
 const BOOKING_EXPORT_COLUMNS = [
   { key: "bookingId", label: "Booking ID" },
@@ -94,6 +95,8 @@ export default function BookingsPage() {
   const [exportFromDate, setExportFromDate] = useState("");
   const [exportToDate, setExportToDate] = useState("");
   const [exportColumns, setExportColumns] = useState<string[]>(DEFAULT_EXPORT_COLUMNS);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: string | null }>({ open: false, id: null });
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const getExportDateRange = () => {
     if (exportDateMode === "month") {
@@ -183,6 +186,26 @@ export default function BookingsPage() {
       setLoading(false);
     }
   }, [page, search, statusFilter]);
+
+  async function handleDelete() {
+    if (!deleteDialog.id) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/bookings/${deleteDialog.id}`, { method: "DELETE" });
+      const result = await res.json();
+      if (result.success) {
+        toast.success(t.bookings.bookingDeleted);
+        setDeleteDialog({ open: false, id: null });
+        fetchBookings();
+      } else {
+        toast.error(result.error || t.bookings.deleteFailed);
+      }
+    } catch {
+      toast.error(t.bookings.deleteFailed);
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
 
   useEffect(() => {
     fetchBookings();
@@ -362,23 +385,32 @@ export default function BookingsPage() {
               {/* Mobile card view */}
               <div className="divide-y divide-gray-100 sm:hidden">
                 {bookings.map((booking) => (
-                  <Link
-                    key={booking.id}
-                    href={`/admin/bookings/${booking.id}`}
-                    className="block px-4 py-3 transition-colors hover:bg-gray-50"
-                  >
+                  <div key={booking.id} className="px-4 py-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-blue-600">
+                        <Link
+                          href={`/admin/bookings/${booking.id}`}
+                          className="text-sm font-semibold text-blue-600 hover:underline"
+                        >
                           #{booking.bookingId}
-                        </span>
+                        </Link>
                         <StatusBadge status={booking.status} label={getStatusLabel(t, booking.status)} />
                       </div>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {booking.totalAmount
-                          ? formatCurrency(booking.totalAmount)
-                          : "-"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900">
+                          {booking.totalAmount
+                            ? formatCurrency(booking.totalAmount)
+                            : "-"}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                          onClick={() => setDeleteDialog({ open: true, id: booking.id })}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="mt-1 flex items-center justify-between">
                       <p className="text-sm text-gray-600 truncate">
@@ -388,7 +420,7 @@ export default function BookingsPage() {
                         {formatDate(booking.travelDate)}
                       </p>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
 
@@ -443,11 +475,21 @@ export default function BookingsPage() {
                             : "-"}
                         </td>
                         <td className="p-4">
-                          <Button variant="outline" size="sm" asChild>
-                            <Link href={`/admin/bookings/${booking.id}`}>
-                              {t.common.view}
-                            </Link>
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={`/admin/bookings/${booking.id}`}>
+                                {t.common.view}
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
+                              onClick={() => setDeleteDialog({ open: true, id: booking.id })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -485,6 +527,18 @@ export default function BookingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+        title={t.bookings.deleteTitle}
+        description={t.bookings.deleteMessage}
+        confirmLabel={t.common.delete}
+        variant="destructive"
+        onConfirm={handleDelete}
+        loading={deleteLoading}
+      />
     </div>
   );
 }
