@@ -5,7 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { createBookingSchema, type CreateBookingInput } from "@/validators/booking.validator";
+import { createBookingSchema, CAR_TYPES, type CreateBookingInput } from "@/validators/booking.validator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -305,6 +305,35 @@ export default function BookingPage() {
                   </Select>
                 )}
               />
+            </div>
+
+            {/* Car Type */}
+            <div>
+              <Label>Preferred Car Type</Label>
+              <Controller
+                control={control}
+                name="vehiclePreference"
+                render={({ field }) => (
+                  <Select
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select a car type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CAR_TYPES.map((car) => (
+                        <SelectItem key={car} value={car}>
+                          {car}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.vehiclePreference && (
+                <p className="mt-1 text-sm text-red-500">{errors.vehiclePreference.message}</p>
+              )}
             </div>
           </CardContent>
         </Card>

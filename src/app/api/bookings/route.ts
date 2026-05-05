@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
           pickupLocation: data.pickupLocation,
           dropLocation: data.dropLocation,
           pickupTime: data.pickupTime || null,
+          vehiclePreference: data.vehiclePreference || null,
           status: BookingStatus.PENDING,
         },
       });

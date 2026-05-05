@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { BOOKING_STATUSES } from "@/lib/constants";
 
+export const CAR_TYPES = [
+  "Ertiga",
+  "Innova Crysta",
+  "Swift Dzire",
+  "Kia Carens",
+  "17 Seater AC/Non AC",
+] as const;
+
 export const createBookingSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100).trim(),
   phone: z
@@ -15,6 +23,7 @@ export const createBookingSchema = z.object({
   pickupLocation: z.string().min(2, "Pickup location is required").max(500).trim(),
   dropLocation: z.string().min(2, "Drop location is required").max(500).trim(),
   pickupTime: z.string().max(20).optional(),
+  vehiclePreference: z.enum(CAR_TYPES).optional(),
 });
 
 export const assignPricingSchema = z.object({
@@ -62,6 +71,7 @@ export const adminCreateBookingSchema = z.object({
   returnDate: z.coerce.date().optional(),
   estimatedDistance: z.number().positive().max(100000).optional(),
   specialRequests: z.string().max(1000).optional(),
+  vehiclePreference: z.enum(CAR_TYPES).optional(),
   status: z.enum(["PENDING", "CONFIRMED"]).default("CONFIRMED"),
 });
 

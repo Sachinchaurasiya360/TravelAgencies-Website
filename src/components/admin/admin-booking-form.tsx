@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useT } from "@/lib/i18n/language-context";
+import { CAR_TYPES } from "@/validators/booking.validator";
 import { Loader2 } from "lucide-react";
 
 interface AdminBookingFormProps {
@@ -28,6 +29,7 @@ const initialForm = {
   pickupLocation: "",
   dropLocation: "",
   pickupTime: "",
+  vehiclePreference: "",
   status: "CONFIRMED",
 };
 
@@ -56,6 +58,7 @@ export function AdminBookingForm({ onSuccess, onCancel }: AdminBookingFormProps)
 
       if (form.email) payload.email = form.email;
       if (form.pickupTime) payload.pickupTime = form.pickupTime;
+      if (form.vehiclePreference) payload.vehiclePreference = form.vehiclePreference;
 
       const res = await fetch("/api/bookings/admin", {
         method: "POST",
@@ -150,7 +153,7 @@ export function AdminBookingForm({ onSuccess, onCancel }: AdminBookingFormProps)
             </div>
           </div>
 
-          {/* Row 3: Pickup time */}
+          {/* Row 3: Pickup time + Car type */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <Label htmlFor="pickupTime">{t.bookingForm.pickupTime}</Label>
@@ -160,6 +163,22 @@ export function AdminBookingForm({ onSuccess, onCancel }: AdminBookingFormProps)
                 value={form.pickupTime}
                 onChange={(e) => setForm({ ...form, pickupTime: e.target.value })}
               />
+            </div>
+            <div>
+              <Label htmlFor="vehiclePreference">Car Type</Label>
+              <Select
+                value={form.vehiclePreference}
+                onValueChange={(v) => setForm({ ...form, vehiclePreference: v })}
+              >
+                <SelectTrigger id="vehiclePreference">
+                  <SelectValue placeholder="Select car type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CAR_TYPES.map((car) => (
+                    <SelectItem key={car} value={car}>{car}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

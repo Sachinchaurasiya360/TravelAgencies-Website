@@ -48,6 +48,7 @@ import type { BOOKING_STATUSES } from "@/lib/constants";
 import { useT } from "@/lib/i18n/language-context";
 import { interpolate } from "@/lib/i18n";
 import { getStatusLabel, getPaymentMethodLabel } from "@/lib/i18n/label-maps";
+import { CAR_TYPES } from "@/validators/booking.validator";
 import { downloadInvoicePdf, downloadDutySlipPdf } from "@/lib/helpers/download-pdf";
 
 type BookingStatus = (typeof BOOKING_STATUSES)[number];
@@ -60,6 +61,7 @@ interface BookingDetail {
   pickupLocation: string;
   dropLocation: string;
   pickupTime: string | null;
+  vehiclePreference: string | null;
   baseFare: string | null;
   tollCharges: string | null;
   parkingCharges: string | null;
@@ -188,6 +190,11 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const [selectedVendorId, setSelectedVendorId] = useState("");
   const [vendorCost, setVendorCost] = useState("");
   const [vendorLoading, setVendorLoading] = useState(false);
+
+  // Vehicle preference edit
+  const [editingVehiclePref, setEditingVehiclePref] = useState(false);
+  const [vehiclePrefValue, setVehiclePrefValue] = useState("");
+  const [vehiclePrefLoading, setVehiclePrefLoading] = useState(false);
 
   // Duty slip editing
   const [dsEditing, setDsEditing] = useState(false);
@@ -342,7 +349,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       month: "2-digit",
       year: "numeric",
     });
-    const vehicle = [booking.driver?.vehicleName, booking.driver?.vehicleNumber].filter(Boolean).join(" ") || "";
+    const assignedVehicle = [booking.driver?.vehicleName, booking.driver?.vehicleNumber].filter(Boolean).join(" ") || "";
+    const carName = assignedVehicle || booking.vehiclePreference || "";
     const fare = Number(booking.baseFare || 0);
     const parking = Number(booking.parkingCharges || 0);
     const toll = Number(booking.tollCharges || 0);
@@ -352,12 +360,12 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
     const total = Number(booking.totalAmount || 0);
 
     let msg = `Your Booking for ${booking.pickupLocation} To ${booking.dropLocation} on ${travelDate} is confirmed`;
-    if (vehicle) msg += ` with ${vehicle}`;
+    if (carName) msg += ` with ${carName}`;
     msg += `\n`;
     if (booking.pickupTime) msg += `\nPickup Time - ${booking.pickupTime}\n`;
 
     if (fare > 0) msg += `\nFare: Rs ${fare.toFixed(2)}`;
-    if (parking > 0) msg += `\nParking- ${parking.toFixed(0)}`;
+    if (parking > 0) msg += `\nAirPort Parking- ${parking.toFixed(0)}`;
     if (toll > 0) msg += `\nToll- ${toll.toFixed(0)}`;
     if (driverAllowance > 0) msg += `\nDriver Allowance- ${driverAllowance.toFixed(0)}`;
     if (extra > 0) msg += `\n${booking.extraChargesNote || "Other Charges"}- ${extra.toFixed(0)}`;
@@ -575,6 +583,29 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
       toast.error(t.bookingDetail.driverLinkFailed);
     } finally {
       setDriverLinkLoading(false);
+    }
+  }
+
+  async function handleSaveVehiclePref() {
+    setVehiclePrefLoading(true);
+    try {
+      const res = await fetch(`/api/bookings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vehiclePreference: (vehiclePrefValue === "_none" || vehiclePrefValue === "") ? null : vehiclePrefValue }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success("Car type updated");
+        setEditingVehiclePref(false);
+        await fetchBooking();
+      } else {
+        toast.error(result.error || "Failed to update car type");
+      }
+    } catch {
+      toast.error("Failed to update car type");
+    } finally {
+      setVehiclePrefLoading(false);
     }
   }
 
@@ -910,6 +941,43 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 />
                 <span className="text-sm font-medium">{t.bookingDetail.vendorCar}</span>
               </label>
+            </div>
+
+            {/* Customer's preferred car type */}
+            <div className="rounded-lg border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Customer's Car Preference</span>
+                {!editingVehiclePref && (
+                  <Button variant="ghost" size="sm" onClick={() => { setVehiclePrefValue(booking.vehiclePreference || ""); setEditingVehiclePref(true); }}>
+                    <Pencil className="h-3 w-3 mr-1" /> Edit
+                  </Button>
+                )}
+              </div>
+              {editingVehiclePref ? (
+                <div className="flex items-center gap-2">
+                  <Select value={vehiclePrefValue} onValueChange={setVehiclePrefValue}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select car type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">— Not specified —</SelectItem>
+                      {CAR_TYPES.map((car) => (
+                        <SelectItem key={car} value={car}>{car}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" onClick={handleSaveVehiclePref} disabled={vehiclePrefLoading}>
+                    <Save className="h-3 w-3 mr-1" />{vehiclePrefLoading ? "Saving..." : "Save"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditingVehiclePref(false)}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm font-semibold">
+                  {booking.vehiclePreference || <span className="text-muted-foreground italic">Not specified</span>}
+                </p>
+              )}
             </div>
 
             {/* VENDOR_CAR: Vendor selection */}

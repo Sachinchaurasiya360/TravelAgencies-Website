@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
           pickupTime: data.pickupTime || null,
           estimatedDistance: data.estimatedDistance ?? null,
           specialRequests: data.specialRequests || null,
+          vehiclePreference: data.vehiclePreference || null,
           ...(data.status === "CONFIRMED" ? { confirmedAt: new Date() } : {}),
         },
       });
